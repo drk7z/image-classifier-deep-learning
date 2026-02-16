@@ -6,7 +6,6 @@ This module handles making predictions on new images.
 
 from pathlib import Path
 import numpy as np
-import cv2
 import tensorflow as tf
 from PIL import Image
 import matplotlib.pyplot as plt
