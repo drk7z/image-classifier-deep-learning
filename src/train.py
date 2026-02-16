@@ -19,7 +19,7 @@ from tensorflow.keras.callbacks import (
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-from model import create_cnn_model, compile_model
+from .model import create_cnn_model, compile_model
 
 
 class ImageClassifierTrainer:

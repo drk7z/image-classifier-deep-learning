@@ -8,7 +8,6 @@ import streamlit as st
 from pathlib import Path
 import numpy as np
 from PIL import Image
-import tensorflow as tf
 import matplotlib.pyplot as plt
 
 # Import from src
@@ -30,15 +29,41 @@ st.write("Upload an image to classify it as a cat or dog!")
 # Sidebar
 st.sidebar.title("Settings")
 
+# Optional uploaded model
+uploaded_model_file = st.sidebar.file_uploader(
+    "Upload model (.h5)",
+    type=["h5"],
+    help="Use this option if no trained model is available in the models/ directory."
+)
+
 # Model selection
 model_name = st.sidebar.selectbox(
     "Select Model",
     ["CNN Model", "Transfer Learning (MobileNetV2)"]
 )
 
+
+def resolve_model_path(default_path, timestamped_pattern):
+    """Resolve model path, preferring fixed filename and falling back to latest timestamped file."""
+    default_model_path = Path(default_path)
+
+    if default_model_path.exists():
+        return str(default_model_path)
+
+    model_candidates = sorted(
+        default_model_path.parent.glob(timestamped_pattern),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True
+    )
+
+    if model_candidates:
+        return str(model_candidates[0])
+
+    return None
+
 # Load model
 @st.cache_resource
-def load_model(model_path):
+def load_model(model_path, cache_key=None):
     """Load model from cache."""
     try:
         return ImageClassifier(
@@ -51,12 +76,40 @@ def load_model(model_path):
 
 
 # Model paths
-model_paths = {
-    "CNN Model": "models/cnn_classifier_final.h5",
-    "Transfer Learning (MobileNetV2)": "models/transfer_learning_final.h5"
+model_configs = {
+    "CNN Model": {
+        "default_path": "models/cnn_classifier_final.h5",
+        "timestamped_pattern": "cnn_classifier_final_*.h5"
+    },
+    "Transfer Learning (MobileNetV2)": {
+        "default_path": "models/transfer_learning_final.h5",
+        "timestamped_pattern": "transfer_learning_final_*.h5"
+    }
 }
 
-classifier = load_model(model_paths[model_name])
+selected_model_config = model_configs[model_name]
+resolved_model_path = None
+
+if uploaded_model_file is not None:
+    models_dir = Path("models")
+    models_dir.mkdir(exist_ok=True)
+    uploaded_model_path = models_dir / "uploaded_model.h5"
+    uploaded_model_path.write_bytes(uploaded_model_file.getbuffer())
+    resolved_model_path = str(uploaded_model_path)
+    st.sidebar.success("Uploaded model loaded for this session.")
+else:
+    resolved_model_path = resolve_model_path(
+        selected_model_config["default_path"],
+        selected_model_config["timestamped_pattern"]
+    )
+
+if resolved_model_path is None:
+    st.error("Model file not found. Please train a model first.")
+    st.info("You can upload a trained .h5 model from the sidebar to run predictions.")
+    st.stop()
+
+model_mtime = Path(resolved_model_path).stat().st_mtime if Path(resolved_model_path).exists() else None
+classifier = load_model(resolved_model_path, cache_key=model_mtime)
 
 if classifier is None:
     st.stop()
