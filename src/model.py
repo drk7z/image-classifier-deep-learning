@@ -67,7 +67,7 @@ def create_cnn_model(input_shape=(224, 224, 3), num_classes=2):
         layers.Dropout(0.5),
         
         # Output Layer
-        layers.Dense(num_classes, activation='softmax')
+        layers.Dense(num_classes, activation='softmax', dtype='float32')
     ])
     
     return model
@@ -100,7 +100,7 @@ def create_transfer_learning_model(input_shape=(224, 224, 3), num_classes=2):
         layers.GlobalAveragePooling2D(),
         layers.Dense(256, activation='relu'),
         layers.Dropout(0.5),
-        layers.Dense(num_classes, activation='softmax')
+        layers.Dense(num_classes, activation='softmax', dtype='float32')
     ])
     
     return model

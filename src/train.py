@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 import numpy as np
 import tensorflow as tf
+from tensorflow.keras import mixed_precision
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.callbacks import (
     EarlyStopping, 
@@ -19,7 +20,7 @@ from tensorflow.keras.callbacks import (
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-from .model import create_cnn_model, compile_model
+from .model import create_cnn_model, create_transfer_learning_model, compile_model
 
 
 class ImageClassifierTrainer:
@@ -92,9 +93,51 @@ class ImageClassifierTrainer:
         )
         
         return train_generator, validation_generator
+
+    def configure_hardware_acceleration(self, enable_xla=True, enable_mixed_precision=True):
+        """Configure TensorFlow hardware acceleration settings."""
+        gpus = tf.config.list_physical_devices('GPU')
+        cpus = tf.config.list_physical_devices('CPU')
+
+        print("\n=== Hardware Info ===")
+        print(f"CPUs available: {len(cpus)}")
+        print(f"GPUs available: {len(gpus)}")
+
+        if enable_xla:
+            tf.config.optimizer.set_jit(True)
+            print("XLA JIT: enabled")
+
+        if gpus:
+            for gpu in gpus:
+                try:
+                    tf.config.experimental.set_memory_growth(gpu, True)
+                except Exception:
+                    pass
+
+            if enable_mixed_precision:
+                mixed_precision.set_global_policy('mixed_float16')
+                print("Mixed precision: enabled (mixed_float16)")
+        else:
+            print("GPU not detected. Training will use CPU.")
+
+    def _merge_histories(self, base_history, extra_history):
+        """Merge Keras History objects from multi-stage training."""
+        if base_history is None:
+            return extra_history
+        if extra_history is None:
+            return base_history
+
+        for key, values in extra_history.history.items():
+            if key in base_history.history:
+                base_history.history[key].extend(values)
+            else:
+                base_history.history[key] = values
+
+        return base_history
     
-    def train(self, epochs=50, batch_size=32, learning_rate=0.001, 
-              use_augmentation=True, model_name='cnn_classifier'):
+    def train(self, epochs=50, batch_size=32, learning_rate=0.001,
+              use_augmentation=True, model_name=None, model_type='cnn',
+              fine_tune=True, fine_tune_layers=30, fine_tune_epochs=5):
         """
         Train the model.
         
@@ -103,8 +146,21 @@ class ImageClassifierTrainer:
             batch_size: Batch size
             learning_rate: Learning rate
             use_augmentation: Whether to use data augmentation
-            model_name: Name for the model
+            model_name: Name for the model. If None, inferred from model_type.
+            model_type: 'cnn' or 'transfer'
+            fine_tune: Whether to run a fine-tuning stage (transfer model only)
+            fine_tune_layers: Number of base model layers to unfreeze in fine-tuning
+            fine_tune_epochs: Number of epochs for fine-tuning stage
         """
+        model_type = model_type.lower().strip()
+        if model_type not in ('cnn', 'transfer'):
+            raise ValueError("model_type must be 'cnn' or 'transfer'")
+
+        if model_name is None:
+            model_name = 'cnn_classifier' if model_type == 'cnn' else 'transfer_learning'
+
+        self.configure_hardware_acceleration()
+
         print("Creating data generators...")
         train_gen, val_gen = self.create_data_generators(
             batch_size=batch_size,
@@ -117,8 +173,12 @@ class ImageClassifierTrainer:
         print(f"Classes: {train_gen.class_indices}")
         
         # Create and compile model
-        print("Creating model...")
-        self.model = create_cnn_model(num_classes=num_classes)
+        print(f"Creating {model_type} model...")
+        if model_type == 'transfer':
+            self.model = create_transfer_learning_model(num_classes=num_classes)
+        else:
+            self.model = create_cnn_model(num_classes=num_classes)
+
         self.model = compile_model(self.model, learning_rate=learning_rate)
         
         # Print model summary
@@ -154,16 +214,54 @@ class ImageClassifierTrainer:
             )
         ]
         
-        # Train model
-        print("Starting training...")
+        # Train model - stage 1
+        total_epochs = max(int(epochs), 1)
+        effective_fine_tune = (
+            model_type == 'transfer' and
+            fine_tune and
+            int(fine_tune_epochs) > 0 and
+            total_epochs > 1
+        )
+
+        stage1_epochs = total_epochs
+        stage2_epochs = 0
+        if effective_fine_tune:
+            stage2_epochs = min(int(fine_tune_epochs), total_epochs - 1)
+            stage1_epochs = total_epochs - stage2_epochs
+
+        print(f"Starting training (stage 1 / {stage1_epochs} epochs)...")
         self.history = self.model.fit(
             train_gen,
-            epochs=epochs,
+            epochs=stage1_epochs,
             validation_data=val_gen,
             callbacks=callbacks,
             steps_per_epoch=len(train_gen),
             validation_steps=len(val_gen)
         )
+
+        # Fine-tuning stage for transfer learning
+        if effective_fine_tune and stage2_epochs > 0:
+            print(f"Starting fine-tuning (stage 2 / {stage2_epochs} epochs)...")
+
+            base_model = self.model.layers[0]
+            base_model.trainable = True
+
+            if fine_tune_layers > 0:
+                for layer in base_model.layers[:-fine_tune_layers]:
+                    layer.trainable = False
+
+            self.model = compile_model(self.model, learning_rate=learning_rate * 0.1)
+
+            fine_tune_history = self.model.fit(
+                train_gen,
+                epochs=stage1_epochs + stage2_epochs,
+                initial_epoch=stage1_epochs,
+                validation_data=val_gen,
+                callbacks=callbacks,
+                steps_per_epoch=len(train_gen),
+                validation_steps=len(val_gen)
+            )
+            self.history = self._merge_histories(self.history, fine_tune_history)
         
         # Save model and history
         final_model_path = self.model_dir / f"{model_name}_final_{timestamp}.h5"

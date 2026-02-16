@@ -104,6 +104,17 @@ else:
     )
 
 if resolved_model_path is None:
+    if model_name != "CNN Model":
+        fallback_config = model_configs["CNN Model"]
+        fallback_model_path = resolve_model_path(
+            fallback_config["default_path"],
+            fallback_config["timestamped_pattern"]
+        )
+        if fallback_model_path is not None:
+            resolved_model_path = fallback_model_path
+            st.warning("Transfer Learning model not found. Using CNN model as fallback.")
+
+if resolved_model_path is None:
     st.error("Model file not found. Please train a model first.")
     st.info("You can upload a trained .h5 model from the sidebar to run predictions.")
     st.stop()
@@ -128,7 +139,7 @@ if uploaded_file is not None:
     
     with col1:
         st.subheader("Original Image")
-        st.image(image, use_column_width=True)
+        st.image(image, width="stretch")
     
     # Make prediction
     with col2:
@@ -136,7 +147,8 @@ if uploaded_file is not None:
         
         # Save temporary file for prediction
         temp_path = Path("temp_image.jpg")
-        image.save(temp_path)
+        image_to_save = image.convert("RGB") if image.mode != "RGB" else image
+        image_to_save.save(temp_path, format="JPEG")
         
         # Get prediction
         pred_class, confidence, scores = classifier.predict(
