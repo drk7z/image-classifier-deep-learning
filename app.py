@@ -287,27 +287,31 @@ try:
     if not show_uploader and classifier is not None:
         uploaded_files = st.session_state.get("last_uploaded_files", [])
         import traceback
-        for index, uploaded_file in enumerate(uploaded_files, start=1):
-            try:
-                uploaded_file.seek(0, 2)
-                uploaded_file_size = uploaded_file.tell()
-                uploaded_file.seek(0)
-                image = Image.open(uploaded_file).convert("RGB")
-                with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
-                    temp_path = Path(temp_file.name)
-                image.save(temp_path, format="JPEG")
+        try:
+            for index, uploaded_file in enumerate(uploaded_files, start=1):
                 try:
-                    pred_class, confidence, scores = classifier.predict(
-                        str(temp_path),
-                        return_confidence=True
-                    )
-                finally:
-                    if temp_path.exists():
-                        temp_path.unlink()
-            except Exception as e:
-                st.error(f"Erro inesperado ao processar a imagem: {e}")
-                st.error(traceback.format_exc())
-                continue
+                    uploaded_file.seek(0, 2)
+                    uploaded_file_size = uploaded_file.tell()
+                    uploaded_file.seek(0)
+                    image = Image.open(uploaded_file).convert("RGB")
+                    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
+                        temp_path = Path(temp_file.name)
+                    image.save(temp_path, format="JPEG")
+                    try:
+                        pred_class, confidence, scores = classifier.predict(
+                            str(temp_path),
+                            return_confidence=True
+                        )
+                    finally:
+                        if temp_path.exists():
+                            temp_path.unlink()
+                except Exception as e:
+                    st.error(f"Erro inesperado ao processar a imagem: {e}")
+                    st.error(traceback.format_exc())
+                    continue
+        except Exception as e:
+            st.error(f"Erro fatal ao processar imagens: {e}")
+            st.error(traceback.format_exc())
 
             # Lógica de rejeição: se confiança < 0.6, exibe mensagem de rejeição
             if confidence < 0.6:
