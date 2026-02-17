@@ -1,11 +1,8 @@
-[theme]
-[server]
-runOnSave = false
-fileWatcherType = "auto"
 
-[client]
-toolbarMode = "minimal"
-showErrorDetails = false
+
+
+# Arquivo corrigido para evitar erros de sintaxe no Streamlit
+# Remova ou edite abaixo se quiser customizar o tema
 
 [theme]
 base = "light"

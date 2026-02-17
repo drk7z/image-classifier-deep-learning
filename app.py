@@ -31,7 +31,7 @@ from src.predict import ImageClassifier
 # Page configuration
 
 st.set_page_config(
-    page_title="Classificador de Imagens",
+    page_title="image-classifier",
     page_icon="🐱",
     layout="wide"
 )
@@ -320,23 +320,18 @@ try:
     show_uploader = not st.session_state.get("hide_uploader", False)
     uploaded_files = None
 
-    if show_uploader:
-        uploaded_files = st.file_uploader(
-            "Escolha uma ou mais imagens...",
-            type=["jpg", "jpeg", "png", "bmp"],
-            accept_multiple_files=True,
-            key=f"image_uploader_{st.session_state.image_uploader_key}"
-        )
-    show_uploader = not st.session_state.get("hide_uploader", False)
-    uploaded_files = None
+    # Garante que a key do uploader seja sempre única
+    if "image_uploader_key" not in st.session_state:
+        st.session_state.image_uploader_key = 0
 
     # Sempre mostra o uploader se não houver arquivos enviados
     if show_uploader or "last_uploaded_files" not in st.session_state:
+        uploader_key = f"image_uploader_{st.session_state.image_uploader_key}"
         uploaded_files = st.file_uploader(
             "Escolha uma ou mais imagens...",
             type=["jpg", "jpeg", "png", "bmp"],
             accept_multiple_files=True,
-            key=f"image_uploader_{st.session_state.image_uploader_key}"
+            key=uploader_key
         )
         st.markdown(
             """
@@ -357,6 +352,7 @@ try:
         if uploaded_files:
             st.session_state.hide_uploader = True
             st.session_state.last_uploaded_files = uploaded_files
+            st.session_state.image_uploader_key += 1  # Incrementa para garantir key única
             st.rerun()
 
     if not show_uploader:
