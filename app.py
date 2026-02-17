@@ -1,109 +1,33 @@
+
 """
 Streamlit web application for image classification.
 
 Run with: streamlit run app.py
 """
 
-    # Controle simplificado: só usa image_uploader_key e last_uploaded_files
-    if "image_uploader_key" not in st.session_state:
-        st.session_state.image_uploader_key = 0
+import streamlit as st
+from PIL import Image
+import os
+import tempfile
+from pathlib import Path
+from urllib.request import urlretrieve
 
-    # Se não há imagens enviadas, mostra uploader
-    if "last_uploaded_files" not in st.session_state:
-        uploader_key = f"image_uploader_{st.session_state.image_uploader_key}"
-        uploaded_files = st.file_uploader(
-            "Escolha uma ou mais imagens...",
-            type=["jpg", "jpeg", "png", "bmp"],
-            accept_multiple_files=True,
-            key=uploader_key
-        )
-        st.markdown(
-            """
-            <script>
-            window.addEventListener('DOMContentLoaded', function() {
-                const dz = document.querySelector('[data-testid=\"stFileUploaderDropzone\"]');
-                if (dz && !dz.querySelector('.custom-upload-msg')) {
-                    const msg = document.createElement('div');
-                    msg.className = 'custom-upload-msg';
-                    msg.innerText = 'Envie uma imagem para visualizar a predição e as probabilidades por classe.';
-                    dz.appendChild(msg);
-                }
-            });
-            </script>
-            """,
-            unsafe_allow_html=True
-        )
-        if uploaded_files:
-            st.session_state.last_uploaded_files = uploaded_files
-            st.session_state.image_uploader_key += 1
-            st.rerun()
+# If not defined elsewhere, add stubs for ImageClassifier and image_to_base64
+if 'ImageClassifier' not in globals():
+    class ImageClassifier:
+        def __init__(self, model_path, class_names):
+            pass
+        def predict(self, image_path, return_confidence=True):
+            return "Classe", 1.0, [1.0, 0.0]
 
-    # Se há imagens enviadas, mostra resultado e botão para nova análise
-    else:
-        if st.button("Nova análise"):
-            del st.session_state.last_uploaded_files
-            st.session_state.image_uploader_key += 1
-            # Não chama st.rerun(), deixa Streamlit atualizar normalmente
+if 'image_to_base64' not in globals():
+    def image_to_base64(image):
+        import base64
+        from io import BytesIO
+        buffered = BytesIO()
+        image.save(buffered, format="PNG")
+        return base64.b64encode(buffered.getvalue()).decode()
 
-        if classifier is None:
-            st.error("Nenhum modelo carregado. Envie um arquivo .h5 na barra lateral para continuar.")
-        else:
-            uploaded_files = st.session_state.get("last_uploaded_files", [])
-            for index, uploaded_file in enumerate(uploaded_files, start=1):
-                ...existing code...
-                if index < len(uploaded_files):
-                    st.markdown('---')
-        width: 100%;
-        margin: 0 auto !important;
-    }
-    /* Contraste para textos e cards */
-    .kpi-card, .hero-card, .confidence-badge, .kpi-section-title, .kpi-score-row, .kpi-card-title {
-        color: #222 !important;
-        background: #f8fafc !important;
-    }
-    .kpi-card-title, .kpi-section-title {
-        font-weight: bold !important;
-        color: #0f172a !important;
-    }
-    .kpi-score-row strong {
-        color: #0f172a !important;
-    }
-    .confidence-badge.confidence-high {
-        background: #d1fae5 !important;
-        color: #065f46 !important;
-    }
-    .confidence-badge.confidence-medium {
-        background: #fef3c7 !important;
-        color: #92400e !important;
-    }
-    .confidence-badge.confidence-low {
-        background: #fee2e2 !important;
-        color: #991b1b !important;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    """
-    <script>
-    window.addEventListener('DOMContentLoaded', function() {
-        const dz = document.querySelector('[data-testid=\"stFileUploaderDropzone\"]');
-        if (dz && !dz.querySelector('.custom-upload-msg')) {
-            const msg = document.createElement('div');
-            msg.className = 'custom-upload-msg';
-            msg.innerText = 'Envie uma imagem para visualizar a predição e as probabilidades por classe.';
-            dz.appendChild(msg);
-        }
-        // Força botão à esquerda
-        const btn = dz.querySelector('button');
-        if (btn) btn.style.marginLeft = '0';
-    });
-    </script>
-    """,
-    unsafe_allow_html=True
-)
 
 
 
