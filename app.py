@@ -286,21 +286,32 @@ try:
 
     if not show_uploader and classifier is not None:
         uploaded_files = st.session_state.get("last_uploaded_files", [])
+        st.write("[DEBUG] Arquivos enviados:", uploaded_files)
         for index, uploaded_file in enumerate(uploaded_files, start=1):
-            uploaded_file.seek(0, 2)
-            uploaded_file_size = uploaded_file.tell()
-            uploaded_file.seek(0)
-            image = Image.open(uploaded_file).convert("RGB")
-            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
-                temp_path = Path(temp_file.name)
-            image.save(temp_path, format="JPEG")
             try:
+                st.write(f"[DEBUG] Processando arquivo {index}: {uploaded_file.name if hasattr(uploaded_file, 'name') else uploaded_file}")
+                uploaded_file.seek(0, 2)
+                uploaded_file_size = uploaded_file.tell()
+                uploaded_file.seek(0)
+                st.write(f"[DEBUG] Tamanho do arquivo: {uploaded_file_size} bytes")
+                image = Image.open(uploaded_file).convert("RGB")
+                st.write("[DEBUG] Imagem aberta com sucesso")
+                with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
+                    temp_path = Path(temp_file.name)
+                image.save(temp_path, format="JPEG")
+                st.write(f"[DEBUG] Imagem salva temporariamente em {temp_path}")
                 pred_class, confidence, scores = classifier.predict(
                     str(temp_path),
                     return_confidence=True
                 )
+                st.write(f"[DEBUG] Predição: {pred_class}, Confiança: {confidence}, Scores: {scores}")
+            except Exception as e:
+                st.error(f"[ERRO] Falha ao processar a imagem: {e}")
+                import traceback
+                st.error(traceback.format_exc())
+                continue
             finally:
-                if temp_path.exists():
+                if 'temp_path' in locals() and temp_path.exists():
                     temp_path.unlink()
 
             # Lógica de rejeição: se confiança < 0.6, exibe mensagem de rejeição
