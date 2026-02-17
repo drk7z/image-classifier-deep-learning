@@ -4,7 +4,7 @@
 [![Python](https://img.shields.io/badge/Python-3.9+-blue?style=flat&logo=python)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat)](LICENSE)
 
-Um projeto completo de classificação de imagens usando Redes Neurais Convolucionais (CNN) com TensorFlow/Keras. Implementa tanto uma **CNN personalizada** quanto **Transfer Learning** com comparação de desempenho.
+Um projeto completo de classificação de imagens com TensorFlow/Keras, focado em **Transfer Learning (MobileNetV2)** para alta performance e inferência prática.
 
 ---
 
@@ -22,7 +22,6 @@ Um projeto completo de classificação de imagens usando Redes Neurais Convoluci
 
 ## ✨ Características
 
-- ✅ **CNN Personalizada** - Arquitetura própria com 4 blocos convolucionais
 - ✅ **Transfer Learning** - Utiliza MobileNetV2 pré-treinado no ImageNet
 - ✅ **Data Augmentation** - Técnicas de aumento de dados para robustez
 - ✅ **Métricas Completas** - Accuracy, Precision, Recall, Confusion Matrix, ROC-AUC
@@ -105,7 +104,7 @@ image-classifier-deep-learning/
 │   └── test/
 │
 ├── 📂 src/                  # Código-fonte principal
-│   ├── model.py            # Arquiteturas CNN e Transfer Learning
+│   ├── model.py            # Arquitetura de Transfer Learning
 │   ├── train.py            # Script de treinamento
 │   ├── evaluate.py         # Avaliação e métricas
 │   └── predict.py          # Predições em novas imagens
@@ -154,7 +153,7 @@ jupyter notebook notebooks/01_cats_vs_dogs_classifier.ipynb
 Siga o notebook passo a passo para:
 - Explorar o dataset
 - Executar data augmentation
-- Treinar ambos os modelos
+- Treinar o modelo de Transfer Learning
 - Comparar desempenho
 - Fazer predições
 
@@ -164,7 +163,7 @@ Siga o notebook passo a passo para:
 python -c "
 from src.evaluate import ModelEvaluator
 
-evaluator = ModelEvaluator('models/cnn_classifier_final.h5')
+evaluator = ModelEvaluator('models/transfer_learning_final.h5')
 metrics = evaluator.evaluate_on_test_set()
 evaluator.plot_confusion_matrix()
 "
@@ -176,7 +175,7 @@ evaluator.plot_confusion_matrix()
 from src.predict import ImageClassifier
 
 classifier = ImageClassifier(
-    model_path='models/cnn_classifier_final.h5',
+    model_path='models/transfer_learning_final.h5',
     class_names=['cat', 'dog']
 )
 
@@ -207,42 +206,34 @@ Funcionalidades:
 - Upload de imagens
 - Predição em tempo real
 - Gráfico de confiança
-- Comparação de modelos
+- Classificação com Transfer Learning (MobileNetV2)
 
 ---
 
 ## 📊 Resultados
 
-### Arquitetura da CNN Personalizada
+### Arquitetura do Transfer Learning (MobileNetV2)
 
 ```
 Input: 224x224x3
     ↓
-Conv Block 1: 32 filters → BatchNorm → MaxPool
-    ↓
-Conv Block 2: 64 filters → BatchNorm → MaxPool
-    ↓
-Conv Block 3: 128 filters → BatchNorm → MaxPool
-    ↓
-Conv Block 4: 256 filters → BatchNorm → MaxPool
+MobileNetV2 (pré-treinada no ImageNet)
     ↓
 GlobalAveragePooling
     ↓
-Dense(512, ReLU) → Dropout(0.5)
-    ↓
-Dense(256, ReLU) → Dropout(0.5)
+Dense(relu) + Dropout
     ↓
 Dense(2, Softmax) → [cat, dog]
 ```
 
 ### Métricas Esperadas
 
-| Métrica | CNN Personalizada | Transfer Learning |
-|---------|------------------|------------------|
-| Accuracy | ~92-95% | ~96-98% |
-| Precision | ~91-94% | ~95-97% |
-| Recall | ~91-94% | ~95-97% |
-| F1-Score | ~92-94% | ~96-97% |
+| Métrica | Transfer Learning |
+|---------|------------------|
+| Accuracy | ~96-98% |
+| Precision | ~95-97% |
+| Recall | ~95-97% |
+| F1-Score | ~96-97% |
 
 ### Exemplos de Visualização
 
@@ -292,7 +283,6 @@ Dense(2, Softmax) → [cat, dog]
 ## 🎓 Conceitos Abordados
 
 ### Deep Learning
-- Redes Neurais Convolucionais (CNN)
 - Camadas Convolucionais e Pooling
 - Batch Normalization
 - Dropout para regularização
@@ -320,7 +310,7 @@ Dense(2, Softmax) → [cat, dog]
 - [Keras Documentation](https://keras.io/)
 - [Deep Learning Book](https://www.deeplearningbook.org/)
 - [Fast.ai - Practical Deep Learning](https://www.fast.ai/)
-- [Stanford CS231n - CNN Courses](http://cs231n.stanford.edu/)
+- [Stanford CS231n - Computer Vision](http://cs231n.stanford.edu/)
 
 ---
 
@@ -352,7 +342,7 @@ tensorboard --logdir=logs
 ```python
 # Para TensorFlow Lite
 import tensorflow as tf
-converter = tf.lite.TFLiteConverter.from_saved_model('models/cnn_classifier')
+converter = tf.lite.TFLiteConverter.from_saved_model('models/transfer_learning_final')
 tflite_model = converter.convert()
 ```
 

@@ -78,3 +78,6 @@ htmlcov/
 
 # Logs
 *.log
+
+# Secure deploy secrets
+deploy/nginx/.htpasswd
