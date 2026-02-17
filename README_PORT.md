@@ -65,12 +65,6 @@ Se você estiver avaliando este repositório:
 - O código reflete preocupação com **legibilidade, manutenibilidade e padrões seguros por padrão**.
 - Pode ser facilmente estendido para classificação multi-classe e deploy em cloud.
 
-## 📫 Contato
-Se for útil, posso oferecer um walkthrough guiado sobre:
-- decisões de treinamento do modelo
-- trade-offs de performance
-- escolhas de hardening para produção
-
 ## 🌐 Links Profissionais
 
 <a href="https://www.linkedin.com/in/leandroandradeti/" target="_blank" rel="noopener noreferrer" style="text-decoration:none; display:inline-flex; align-items:center; gap:8px; margin-right:16px;">

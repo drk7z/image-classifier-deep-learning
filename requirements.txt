@@ -1,3 +1,4 @@
+six
 tensorflow>=2.13.0
 keras>=2.13.0
 opencv-python>=4.8.0
