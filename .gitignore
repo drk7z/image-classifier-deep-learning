@@ -52,9 +52,9 @@ venv.bak/
 .ipynb_checkpoints
 *.ipynb_checkpoints
 
-# Data and models (optional)
+# Data and models (opcional)
 data/
-models/*.h5
+# models/*.h5
 models/*.pt
 logs/
 
