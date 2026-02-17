@@ -327,6 +327,17 @@ try:
             accept_multiple_files=True,
             key=f"image_uploader_{st.session_state.image_uploader_key}"
         )
+    show_uploader = not st.session_state.get("hide_uploader", False)
+    uploaded_files = None
+
+    # Sempre mostra o uploader se não houver arquivos enviados
+    if show_uploader or "last_uploaded_files" not in st.session_state:
+        uploaded_files = st.file_uploader(
+            "Escolha uma ou mais imagens...",
+            type=["jpg", "jpeg", "png", "bmp"],
+            accept_multiple_files=True,
+            key=f"image_uploader_{st.session_state.image_uploader_key}"
+        )
         st.markdown(
             """
             <script>
@@ -355,7 +366,7 @@ try:
             # Remove last_uploaded_files para garantir uploader limpo
             if "last_uploaded_files" in st.session_state:
                 del st.session_state.last_uploaded_files
-            # Não chama st.rerun(), deixa Streamlit atualizar normalmente
+            st.rerun()
 
     if not show_uploader and classifier is None:
         st.error("Nenhum modelo carregado. Envie um arquivo .h5 na barra lateral para continuar.")
