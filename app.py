@@ -63,7 +63,30 @@ st.markdown(
         width: 100%;
         margin: 0 auto !important;
     }
-    /* .kpi-card styles moved to main CSS block below */
+    /* Contraste para textos e cards */
+    .kpi-card, .hero-card, .confidence-badge, .kpi-section-title, .kpi-score-row, .kpi-card-title {
+        color: #222 !important;
+        background: #f8fafc !important;
+    }
+    .kpi-card-title, .kpi-section-title {
+        font-weight: bold !important;
+        color: #0f172a !important;
+    }
+    .kpi-score-row strong {
+        color: #0f172a !important;
+    }
+    .confidence-badge.confidence-high {
+        background: #d1fae5 !important;
+        color: #065f46 !important;
+    }
+    .confidence-badge.confidence-medium {
+        background: #fef3c7 !important;
+        color: #92400e !important;
+    }
+    .confidence-badge.confidence-low {
+        background: #fee2e2 !important;
+        color: #991b1b !important;
+    }
     </style>
     """,
     unsafe_allow_html=True
@@ -99,9 +122,11 @@ Image.MAX_IMAGE_PIXELS = 20_000_000
 
 st.markdown(
     """
-    <div class="hero-card">
-        <h1 class="hero-title">Classificador de Imagens</h1>
-        <p class="hero-subtitle">Este app serve para classificar imagens de pets de forma rápida e visual. Ele usa Transfer Learning com MobileNetV2 para reaproveitar conhecimento de visão computacional, processa sua imagem e exibe a classe prevista (Gato ou Cachorro) com nível de confiança.</p>
+    <div class="hero-card" style="background:#f8fafc; color:#222; border-radius:18px; padding:1.5rem; margin-bottom:2rem;">
+        <h1 class="hero-title" style="color:#0f172a; margin-bottom:0.5rem;">🐱🐶 Classificador de Imagens</h1>
+        <p class="hero-subtitle" style="font-size:1.05rem; color:#222;">
+            Este app serve para classificar imagens de pets de forma rápida e visual. Ele usa Transfer Learning com MobileNetV2 para reaproveitar conhecimento de visão computacional, processa sua imagem e exibe a classe prevista (Gato ou Cachorro) com nível de confiança.
+        </p>
     </div>
 """,
 unsafe_allow_html=True
@@ -140,12 +165,46 @@ with st.sidebar.expander("📊 Resultados esperados", expanded=False):
 with st.sidebar.expander("🔗 Links", expanded=False):
     st.markdown(
         """
-        <div class="social-links">
-            <div class="social-links-title">Conecte-se comigo 👇</div>
-            <a class="social-link" href="https://www.linkedin.com/in/leandroandradeti/" target="_blank" rel="noopener noreferrer">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <style>
+        .social-links-responsive {
+            display: flex;
+            flex-direction: row;
+            gap: 1.2rem;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 0.5rem;
+        }
+        .social-links-title-responsive {
+            font-size: 1.05rem;
+            font-weight: 600;
+            text-align: center;
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+        @media (max-width: 480px) {
+            .social-links-responsive {
+                flex-direction: column;
+                gap: 0.7rem;
+            }
+            .social-links-title-responsive {
+                margin-bottom: 0.2rem;
+            }
+        }
+        </style>
+        <div class="social-links-responsive">
+            <span class="social-links-title-responsive">Conecte-se comigo 👇</span>
+            <a class="social-link" href="https://www.linkedin.com/in/leandroandradeti/" target="_blank" rel="noopener noreferrer" style="display:flex; align-items:center; gap:0.3rem;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M4.98 3.5C4.98 4.88 3.86 6 2.48 6S0 4.88 0 3.5 1.12 1 2.5 1s2.48 1.12 2.48 2.5zM.5 8h4V24h-4V8zm7 0h3.8v2.2h.1c.53-1 1.83-2.2 3.77-2.2C19.2 8 21 10.2 21 14v10h-4v-8.5c0-2-.03-4.5-2.75-4.5-2.75 0-3.17 2.15-3.17 4.36V24h-4V8z"/>
                 </svg>
+                Linkedin
+            </a>
+            <a class="social-link" href="https://github.com/leandroandradeti" target="_blank" rel="noopener noreferrer" style="display:flex; align-items:center; gap:0.3rem;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.263.82-.582 0-.288-.01-1.05-.015-2.06-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.085 1.84 1.238 1.84 1.238 1.07 1.834 2.807 1.304 3.492.997.108-.775.418-1.304.762-1.604-2.665-.304-5.466-1.332-5.466-5.93 0-1.31.468-2.382 1.235-3.222-.124-.303-.535-1.523.117-3.176 0 0 1.008-.322 3.3 1.23.96-.267 1.98-.4 3-.404 1.02.004 2.04.137 3 .404 2.29-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.873.118 3.176.77.84 1.234 1.912 1.234 3.222 0 4.61-2.803 5.624-5.475 5.921.43.372.823 1.102.823 2.222 0 1.606-.014 2.898-.014 3.293 0 .322.218.698.825.58C20.565 21.797 24 17.298 24 12c0-6.63-5.37-12-12-12z"/>
+                </svg>
+                GitHub
             </a>
         </div>
         """,
@@ -293,7 +352,10 @@ try:
         if st.button("Nova análise"):
             st.session_state.hide_uploader = False
             st.session_state.image_uploader_key += 1
-            st.rerun()
+            # Remove last_uploaded_files para garantir uploader limpo
+            if "last_uploaded_files" in st.session_state:
+                del st.session_state.last_uploaded_files
+            # Não chama st.rerun(), deixa Streamlit atualizar normalmente
 
     if not show_uploader and classifier is None:
         st.error("Nenhum modelo carregado. Envie um arquivo .h5 na barra lateral para continuar.")
@@ -317,39 +379,57 @@ try:
                 if temp_path.exists():
                     temp_path.unlink()
 
-            if confidence >= 0.90:
-                badge_text = "Alta confiança"
-                badge_class = "confidence-high"
-            elif confidence >= 0.70:
-                badge_text = "Média confiança"
-                badge_class = "confidence-medium"
+            # Lógica de rejeição: se confiança < 0.6, exibe mensagem de rejeição
+            if confidence < 0.6:
+                st.markdown(f"""
+<div style='display: flex; flex-wrap: wrap; gap: 2.2rem; align-items: flex-start; margin: 1.5rem 0 2.2rem 0; background: #fffbe6; border-radius: 18px; box-shadow: 0 2px 12px #0001; padding: 1.3rem 1.3rem 1.3rem 1.3rem;'>
+    <div style='flex:1; min-width:220px; max-width:340px; display:flex; flex-direction:column; align-items:center;'>
+        <img src='data:image/png;base64,{image_to_base64(image)}' width='290' style='border-radius:12px; box-shadow:0 1px 8px #0001; margin-bottom:0.7rem;' />
+    </div>
+    <div style='flex:2; min-width:260px; max-width:480px; display:flex; align-items:center;'>
+        <div style="width:100%; text-align:center;">
+            <div style="font-size:1.5rem; color:#b26a00; font-weight:700; margin-bottom:0.7rem;">Imagem não reconhecida como gato ou cachorro.</div>
+            <div style="font-size:1.1rem; color:#b26a00;">Confiança: {confidence:.2%}</div>
+        </div>
+    </div>
+</div>
+""",
+unsafe_allow_html=True
+)
             else:
-                badge_text = "Baixa confiança"
-                badge_class = "confidence-low"
+                if confidence >= 0.90:
+                    badge_text = "Alta confiança"
+                    badge_class = "confidence-high"
+                elif confidence >= 0.70:
+                    badge_text = "Média confiança"
+                    badge_class = "confidence-medium"
+                else:
+                    badge_text = "Baixa confiança"
+                    badge_class = "confidence-low"
 
-            st.markdown(f"""
+                st.markdown(f"""
 <div style='display: flex; flex-wrap: wrap; gap: 2.2rem; align-items: flex-start; margin: 1.5rem 0 2.2rem 0; background: #f8fafc; border-radius: 18px; box-shadow: 0 2px 12px #0001; padding: 1.3rem 1.3rem 1.3rem 1.3rem;'>
     <div style='flex:1; min-width:220px; max-width:340px; display:flex; flex-direction:column; align-items:center;'>
         <img src='data:image/png;base64,{image_to_base64(image)}' width='290' style='border-radius:12px; box-shadow:0 1px 8px #0001; margin-bottom:0.7rem;' />
     </div>
     <div style='flex:2; min-width:260px; max-width:480px;'>
         <div class="kpi-card" style="padding-top:0.1rem; margin-top:0; box-shadow:none; background:transparent;">
-            <div class="kpi-card-title" style="margin-top:0; font-size:1.15rem;">&#128200; Painel de Indicadores</div>
+            <div class="kpi-card-title" style="margin-top:0; font-size:1.7rem;">&#128200; Painel de Indicadores</div>
             <div style='display:flex; gap:1.2rem; margin-bottom:0.5rem; margin-top:0.7rem;'>
                 <div style='flex:1;'>
-                    <div style='font-size:0.97rem; color:#64748b; font-weight:600;'>Classe Identificada</div>
-                    <div style='font-size:1.18rem; color:#0f172a; font-weight:700; margin-bottom:0.2rem;'>{pred_class}</div>
+                    <div style='font-size:1.25rem; color:#64748b; font-weight:600;'>Classe Identificada</div>
+                    <div style='font-size:1.7rem; color:#0f172a; font-weight:700; margin-bottom:0.2rem;'>{pred_class}</div>
                 </div>
                 <div style='flex:1;'>
-                    <div style='font-size:0.97rem; color:#64748b; font-weight:600;'>Nível de Confiança</div>
-                    <div style='font-size:1.18rem; color:#0f172a; font-weight:700; margin-bottom:0.2rem;'>{confidence:.2%}</div>
+                    <div style='font-size:1.25rem; color:#64748b; font-weight:600;'>Nível de Confiança</div>
+                    <div style='font-size:1.7rem; color:#0f172a; font-weight:700; margin-bottom:0.2rem;'>{confidence:.2%}</div>
                 </div>
             </div>
-            <span class="confidence-badge {badge_class}" style="margin-bottom:0.7rem;">{badge_text}</span>
-            <div class="kpi-section-title" style='margin-top:1.1rem;'>Distribuição de Probabilidades</div>
+            <span class="confidence-badge {badge_class}" style="margin-bottom:0.7rem; font-size:1.15rem;">{badge_text}</span>
+            <div class="kpi-section-title" style='margin-top:1.1rem; font-size:1.25rem;'>Distribuição de Probabilidades</div>
             <div style='margin-bottom:0.7rem;'>
-                <div class="kpi-score-row"><strong>{classifier.class_names[0]}</strong>: {scores[0]:.2%}</div>
-                <div class="kpi-score-row"><strong>{classifier.class_names[1]}</strong>: {scores[1]:.2%}</div>
+                <div class="kpi-score-row" style="font-size:1.15rem;"><strong>{classifier.class_names[0]}</strong>: {scores[0]:.2%}</div>
+                <div class="kpi-score-row" style="font-size:1.15rem;"><strong>{classifier.class_names[1]}</strong>: {scores[1]:.2%}</div>
             </div>
         </div>
     </div>

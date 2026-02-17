@@ -1,3 +1,4 @@
+[theme]
 [server]
 runOnSave = false
 fileWatcherType = "auto"
