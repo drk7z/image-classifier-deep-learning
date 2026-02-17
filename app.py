@@ -20,10 +20,92 @@ from src.predict import ImageClassifier
 
 
 # Page configuration
+
 st.set_page_config(
     page_title="Classificador de Imagens",
     page_icon="🐱🐶",
     layout="wide"
+)
+
+st.markdown(
+    """
+    <style>
+    .main .block-container {
+        max-width: 1100px !important;
+        min-width: 340px !important;
+        margin: 0 auto !important;
+    }
+    .stColumns {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: flex-start !important;
+        gap: 2.5rem !important;
+    }
+    .stColumn {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        min-width: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    .kpi-card {
+        max-width: 440px;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .kpi-card-title, .kpi-section-title, .kpi-score-row, .confidence-badge {
+        text-align: center !important;
+        width: 100%;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        display: block;
+    }
+    .stImage > img, .stImage img {
+        max-width: 350px !important;
+        width: 100% !important;
+        height: auto !important;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .stMetric, .stMetricLabel, .stMetricValue {
+        text-align: center !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        display: block !important;
+    }
+    @media (max-width: 900px) {
+        .stColumns {
+            flex-direction: column !important;
+            align-items: center !important;
+        }
+        .stColumn {
+            min-width: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+        }
+        .kpi-card {
+            max-width: 100% !important;
+        }
+        .kpi-card-title, .kpi-section-title, .kpi-score-row, .confidence-badge {
+            max-width: 100% !important;
+        }
+        .stImage > img, .stImage img {
+            max-width: 100% !important;
+        }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
 )
 
 st.markdown(
@@ -401,127 +483,131 @@ if "image_uploader_key" not in st.session_state:
     st.session_state.image_uploader_key = 0
 
 # File uploader
-uploaded_files = st.file_uploader(
-    "Escolha uma ou mais imagens...",
-    type=["jpg", "jpeg", "png", "bmp"],
-    accept_multiple_files=True,
-    key=f"image_uploader_{st.session_state.image_uploader_key}"
-)
 
-if uploaded_files:
-    if st.button("Nova análise"):
-        st.session_state.image_uploader_key += 1
-        st.rerun()
+try:
+    uploaded_files = st.file_uploader(
+        "Escolha uma ou mais imagens...",
+        type=["jpg", "jpeg", "png", "bmp"],
+        accept_multiple_files=True,
+        key=f"image_uploader_{st.session_state.image_uploader_key}"
+    )
 
-if uploaded_files and classifier is None:
-    st.error("Nenhum modelo carregado. Envie um arquivo .h5 na barra lateral para continuar.")
+    if uploaded_files:
+        if st.button("Nova análise"):
+            st.session_state.image_uploader_key += 1
+            st.rerun()
 
-if uploaded_files and classifier is not None:
-    for index, uploaded_file in enumerate(uploaded_files, start=1):
-        uploaded_file.seek(0, 2)
-        uploaded_file_size = uploaded_file.tell()
-        uploaded_file.seek(0)
+    if uploaded_files and classifier is None:
+        st.error("Nenhum modelo carregado. Envie um arquivo .h5 na barra lateral para continuar.")
 
-        if uploaded_file_size > MAX_UPLOAD_SIZE_BYTES:
-            st.error(f"A imagem #{index} é muito grande. Tamanho máximo permitido: {MAX_UPLOAD_SIZE_MB} MB.")
-            continue
-
-        if not uploaded_file.type or not uploaded_file.type.startswith("image/"):
-            st.error(f"A imagem #{index} tem tipo inválido. Envie uma imagem válida.")
-            continue
-
-        try:
-            image = Image.open(uploaded_file)
-            image.verify()
+    if uploaded_files and classifier is not None:
+        for index, uploaded_file in enumerate(uploaded_files, start=1):
+            uploaded_file.seek(0, 2)
+            uploaded_file_size = uploaded_file.tell()
             uploaded_file.seek(0)
-            image = Image.open(uploaded_file)
-        except Exception:
-            st.error(f"A imagem #{index} está inválida ou corrompida.")
-            continue
 
-        image = image.convert("RGB") if image.mode != "RGB" else image
+            if uploaded_file_size > MAX_UPLOAD_SIZE_BYTES:
+                st.error(f"A imagem #{index} é muito grande. Tamanho máximo permitido: {MAX_UPLOAD_SIZE_MB} MB.")
+                continue
 
-        st.markdown(f"### Foto {index}")
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.subheader("Imagem Original")
-            st.image(image, width="stretch")
-
-        with col2:
-            st.subheader("Análise")
-            st.markdown('<div class="kpi-card">', unsafe_allow_html=True)
-            st.markdown('<div class="kpi-card-title">📈 Painel de Indicadores</div>', unsafe_allow_html=True)
-
-            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
-                temp_path = Path(temp_file.name)
-
-            image.save(temp_path, format="JPEG")
+            if not uploaded_file.type or not uploaded_file.type.startswith("image/"):
+                st.error(f"A imagem #{index} tem tipo inválido. Envie uma imagem válida.")
+                continue
 
             try:
-                pred_class, confidence, scores = classifier.predict(
-                    str(temp_path),
-                    return_confidence=True
-                )
-            finally:
-                if temp_path.exists():
-                    temp_path.unlink()
+                image = Image.open(uploaded_file)
+                image.verify()
+                uploaded_file.seek(0)
+                image = Image.open(uploaded_file)
+            except Exception:
+                st.error(f"A imagem #{index} está inválida ou corrompida.")
+                continue
 
-            metric_col1, metric_col2 = st.columns(2)
-            with metric_col1:
-                st.metric("Classe Identificada", pred_class)
-            with metric_col2:
-                st.metric("Nível de Confiança", f"{confidence:.2%}")
+            image = image.convert("RGB") if image.mode != "RGB" else image
 
-            if confidence >= 0.90:
-                badge_text = "Alta confiança"
-                badge_class = "confidence-high"
-            elif confidence >= 0.70:
-                badge_text = "Média confiança"
-                badge_class = "confidence-medium"
-            else:
-                badge_text = "Baixa confiança"
-                badge_class = "confidence-low"
+            st.markdown(f"### Foto {index}")
+            col1, col2 = st.columns(2)
 
-            st.markdown(
-                f'<span class="confidence-badge {badge_class}">{badge_text}</span>',
-                unsafe_allow_html=True
-            )
+            with col1:
+                st.subheader("Imagem Original")
+                st.image(image, width="stretch")
 
-            st.markdown('<div class="kpi-section-title">Distribuição de Probabilidades</div>', unsafe_allow_html=True)
-            for i, class_name in enumerate(classifier.class_names):
+            with col2:
+                st.subheader("Análise")
+                st.markdown('<div class="kpi-card">', unsafe_allow_html=True)
+                st.markdown('<div class="kpi-card-title">📈 Painel de Indicadores</div>', unsafe_allow_html=True)
+
+                with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
+                    temp_path = Path(temp_file.name)
+
+                image.save(temp_path, format="JPEG")
+
+                try:
+                    pred_class, confidence, scores = classifier.predict(
+                        str(temp_path),
+                        return_confidence=True
+                    )
+                finally:
+                    if temp_path.exists():
+                        temp_path.unlink()
+
+                metric_col1, metric_col2 = st.columns(2)
+                with metric_col1:
+                    st.metric("Classe Identificada", pred_class)
+                with metric_col2:
+                    st.metric("Nível de Confiança", f"{confidence:.2%}")
+
+                if confidence >= 0.90:
+                    badge_text = "Alta confiança"
+                    badge_class = "confidence-high"
+                elif confidence >= 0.70:
+                    badge_text = "Média confiança"
+                    badge_class = "confidence-medium"
+                else:
+                    badge_text = "Baixa confiança"
+                    badge_class = "confidence-low"
+
                 st.markdown(
-                    f'<div class="kpi-score-row"><strong>{class_name}</strong>: {scores[i]:.2%}</div>',
+                    f'<span class="confidence-badge {badge_class}">{badge_text}</span>',
                     unsafe_allow_html=True
                 )
 
-            fig, ax = plt.subplots(figsize=(6.2, 3.2))
-            colors = ['#22c55e' if i == np.argmax(scores) else '#cbd5e1'
-                     for i in range(len(scores))]
-            bars = ax.barh(classifier.class_names, scores, color=colors)
-            ax.set_xlim([0, 1])
-            ax.set_xlabel('Probabilidade')
-            ax.spines['top'].set_visible(False)
-            ax.spines['right'].set_visible(False)
-            ax.spines['left'].set_visible(False)
-            ax.grid(axis='x', linestyle='--', alpha=0.25)
+                st.markdown('<div class="kpi-section-title">Distribuição de Probabilidades</div>', unsafe_allow_html=True)
+                for i, class_name in enumerate(classifier.class_names):
+                    st.markdown(
+                        f'<div class="kpi-score-row"><strong>{class_name}</strong>: {scores[i]:.2%}</div>',
+                        unsafe_allow_html=True
+                    )
 
-            for bar, score in zip(bars, scores):
-                ax.text(
-                    min(score + 0.02, 0.98),
-                    bar.get_y() + bar.get_height() / 2,
-                    f"{score:.1%}",
-                    va='center',
-                    ha='left',
-                    fontsize=9,
-                    color='#0f172a'
-                )
+                fig, ax = plt.subplots(figsize=(6.2, 3.2))
+                colors = ['#22c55e' if i == np.argmax(scores) else '#cbd5e1'
+                         for i in range(len(scores))]
+                bars = ax.barh(classifier.class_names, scores, color=colors)
+                ax.set_xlim([0, 1])
+                ax.set_xlabel('Probabilidade')
+                ax.spines['top'].set_visible(False)
+                ax.spines['right'].set_visible(False)
+                ax.spines['left'].set_visible(False)
+                ax.grid(axis='x', linestyle='--', alpha=0.25)
 
-            fig.tight_layout()
-            st.pyplot(fig)
-            st.markdown('</div>', unsafe_allow_html=True)
+                for bar, score in zip(bars, scores):
+                    ax.text(
+                        min(score + 0.02, 0.98),
+                        bar.get_y() + bar.get_height() / 2,
+                        f"{score:.1%}",
+                        va='center',
+                        ha='left',
+                        fontsize=9,
+                        color='#0f172a'
+                    )
 
-        if index < len(uploaded_files):
-            st.markdown('---')
-else:
-    st.info("Envie uma imagem para visualizar a predição e as probabilidades por classe.")
+                fig.tight_layout()
+                st.pyplot(fig)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+            if index < len(uploaded_files):
+                st.markdown('---')
+    else:
+        st.info("Envie uma imagem para visualizar a predição e as probabilidades por classe.")
+except Exception as e:
+    st.error(f"Erro inesperado ao processar a imagem ou exibir resultados: {e}")
