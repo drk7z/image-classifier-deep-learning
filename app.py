@@ -4,62 +4,55 @@ Streamlit web application for image classification.
 Run with: streamlit run app.py
 """
 
+    # Controle simplificado: só usa image_uploader_key e last_uploaded_files
+    if "image_uploader_key" not in st.session_state:
+        st.session_state.image_uploader_key = 0
 
-import streamlit as st
-from pathlib import Path
-import numpy as np
-from PIL import Image
-import matplotlib.pyplot as plt
-import tempfile
-import os
-from urllib.request import urlretrieve
-import base64
-from io import BytesIO
+    # Se não há imagens enviadas, mostra uploader
+    if "last_uploaded_files" not in st.session_state:
+        uploader_key = f"image_uploader_{st.session_state.image_uploader_key}"
+        uploaded_files = st.file_uploader(
+            "Escolha uma ou mais imagens...",
+            type=["jpg", "jpeg", "png", "bmp"],
+            accept_multiple_files=True,
+            key=uploader_key
+        )
+        st.markdown(
+            """
+            <script>
+            window.addEventListener('DOMContentLoaded', function() {
+                const dz = document.querySelector('[data-testid=\"stFileUploaderDropzone\"]');
+                if (dz && !dz.querySelector('.custom-upload-msg')) {
+                    const msg = document.createElement('div');
+                    msg.className = 'custom-upload-msg';
+                    msg.innerText = 'Envie uma imagem para visualizar a predição e as probabilidades por classe.';
+                    dz.appendChild(msg);
+                }
+            });
+            </script>
+            """,
+            unsafe_allow_html=True
+        )
+        if uploaded_files:
+            st.session_state.last_uploaded_files = uploaded_files
+            st.session_state.image_uploader_key += 1
+            st.rerun()
 
-# Função utilitária global para converter imagem PIL para base64
-def image_to_base64(img):
-    buffered = BytesIO()
-    img.save(buffered, format="PNG")
-    return base64.b64encode(buffered.getvalue()).decode()
+    # Se há imagens enviadas, mostra resultado e botão para nova análise
+    else:
+        if st.button("Nova análise"):
+            del st.session_state.last_uploaded_files
+            st.session_state.image_uploader_key += 1
+            # Não chama st.rerun(), deixa Streamlit atualizar normalmente
 
-# Import from src
-import sys
-sys.path.insert(0, str(Path(__file__).parent))
-from src.predict import ImageClassifier
-
-
-# Page configuration
-
-st.set_page_config(
-    page_title="image-classifier",
-    page_icon="🐱",
-    layout="wide"
-)
-
-st.markdown(
-
-    """
-    <style>
-    .main .block-container {
-        max-width: 1100px !important;
-        min-width: 340px !important;
-        margin: 0 auto !important;
-    }
-    .analysis-flex-outer {
-        width: 100vw !important;
-        display: flex !important;
-        justify-content: center !important;
-        align-items: flex-start !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        box-sizing: border-box !important;
-    }
-    .analysis-flex-inner {
-        display: flex !important;
-        flex-wrap: wrap !important;
-        justify-content: center !important;
-        align-items: flex-start !important;
-        gap: 2.5rem !important;
+        if classifier is None:
+            st.error("Nenhum modelo carregado. Envie um arquivo .h5 na barra lateral para continuar.")
+        else:
+            uploaded_files = st.session_state.get("last_uploaded_files", [])
+            for index, uploaded_file in enumerate(uploaded_files, start=1):
+                ...existing code...
+                if index < len(uploaded_files):
+                    st.markdown('---')
         width: 100%;
         margin: 0 auto !important;
     }
