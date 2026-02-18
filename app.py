@@ -6,33 +6,18 @@ Run with: streamlit run app.py
 """
 
 import streamlit as st
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 import os
 import tempfile
 from pathlib import Path
 from urllib.request import urlretrieve
-
-# If not defined elsewhere, add stubs for ImageClassifier and image_to_base64
-if 'ImageClassifier' not in globals():
-    class ImageClassifier:
-        def __init__(self, model_path, class_names):
-            pass
-        def predict(self, image_path, return_confidence=True):
-            return "Classe", 1.0, [1.0, 0.0]
-
-if 'image_to_base64' not in globals():
-    def image_to_base64(image):
-        import base64
-        from io import BytesIO
-        buffered = BytesIO()
-        image.save(buffered, format="PNG")
-        return base64.b64encode(buffered.getvalue()).decode()
+from src.predict import ImageClassifier
 
 
 
 
 
-MAX_UPLOAD_SIZE_MB = 200
+MAX_UPLOAD_SIZE_MB = 10
 MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024
 
 Image.MAX_IMAGE_PIXELS = 20_000_000
@@ -117,7 +102,7 @@ with st.sidebar.expander("🔗 Links", expanded=False):
                 </svg>
                 Linkedin
             </a>
-            <a class="social-link" href="https://github.com/leandroandradeti" target="_blank" rel="noopener noreferrer" style="display:flex; align-items:center; gap:0.3rem;">
+            <a class="social-link" href="https://github.com/drk7z" target="_blank" rel="noopener noreferrer" style="display:flex; align-items:center; gap:0.3rem;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.263.82-.582 0-.288-.01-1.05-.015-2.06-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.085 1.84 1.238 1.84 1.238 1.07 1.834 2.807 1.304 3.492.997.108-.775.418-1.304.762-1.604-2.665-.304-5.466-1.332-5.466-5.93 0-1.31.468-2.382 1.235-3.222-.124-.303-.535-1.523.117-3.176 0 0 1.008-.322 3.3 1.23.96-.267 1.98-.4 3-.404 1.02.004 2.04.137 3 .404 2.29-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.873.118 3.176.77.84 1.234 1.912 1.234 3.222 0 4.61-2.803 5.624-5.475 5.921.43.372.823 1.102.823 2.222 0 1.606-.014 2.898-.014 3.293 0 .322.218.698.825.58C20.565 21.797 24 17.298 24 12c0-6.63-5.37-12-12-12z"/>
                 </svg>
@@ -227,35 +212,49 @@ if classifier is not None:
 else:
     st.sidebar.warning("Modelo padrão não encontrado. Envie um .h5 para analisar imagens.")
 
-if "image_uploader_key" not in st.session_state:
-    st.session_state.image_uploader_key = 0
-
-# File uploader
-
-
 try:
     uploaded_files = st.file_uploader(
         "Escolha uma ou mais imagens...",
         type=["jpg", "jpeg", "png", "bmp"],
         accept_multiple_files=True,
     )
-    if uploaded_files:
-        st.session_state.last_uploaded_files = uploaded_files
 
     if classifier is None:
         st.error("Nenhum modelo carregado. Envie um arquivo .h5 na barra lateral para continuar.")
     else:
-        uploaded_files = st.session_state.get("last_uploaded_files", [])
         for index, uploaded_file in enumerate(uploaded_files, start=1):
             try:
+                if uploaded_file is None:
+                    continue
+
                 uploaded_file.seek(0, 2)
                 uploaded_file_size = uploaded_file.tell()
                 uploaded_file.seek(0)
+
+                if uploaded_file_size > MAX_UPLOAD_SIZE_BYTES:
+                    st.error(
+                        f"Imagem {index} excede {MAX_UPLOAD_SIZE_MB} MB. "
+                        "Envie uma imagem menor para evitar travamentos no deploy."
+                    )
+                    continue
+
                 try:
-                    image = Image.open(uploaded_file).convert("RGB")
+                    with Image.open(uploaded_file) as pil_image:
+                        width, height = pil_image.size
+                        if width * height > Image.MAX_IMAGE_PIXELS:
+                            st.error(
+                                f"Imagem {index} muito grande ({width}x{height}). "
+                                "Use uma imagem menor."
+                            )
+                            continue
+                        image = pil_image.convert("RGB")
+                except UnidentifiedImageError:
+                    st.error(f"Arquivo {index} não é uma imagem válida.")
+                    continue
                 except Exception:
                     st.error("Imagem muito grande ou inválida.")
                     continue
+
                 with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
                     temp_path = Path(temp_file.name)
                 image.save(temp_path, format="JPEG")
@@ -273,6 +272,8 @@ try:
                     st.warning(f"Imagem não reconhecida. Confiança: {confidence:.2%}")
                 else:
                     st.success(f"{pred_class} - Confiança: {confidence:.2%}")
+                    if len(scores) >= 2:
+                        st.caption(f"Gato: {scores[0]:.2%} | Cachorro: {scores[1]:.2%}")
             except Exception as e:
                 import traceback
                 st.error(f"Erro inesperado ao processar a imagem: {e}")
