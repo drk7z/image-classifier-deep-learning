@@ -16,6 +16,8 @@ import shutil
 import numpy as np
 st.set_page_config(page_title="Classificador de Imagens", page_icon="🐱🐶", layout="wide")
 
+APP_BUILD_TAG = "build-no-cv2-2026-02-17-1"
+
 
 
 
@@ -27,6 +29,7 @@ MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024
 Image.MAX_IMAGE_PIXELS = 20_000_000
 
 st.title("🐱🐶 Classificador de Imagens")
+st.caption(f"Build: {APP_BUILD_TAG}")
 st.write(
     "Este app classifica imagens de pets com Transfer Learning (MobileNetV2) "
     "e mostra a classe prevista (Gato ou Cachorro) com nível de confiança."
