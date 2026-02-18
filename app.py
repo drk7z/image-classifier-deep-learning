@@ -1,334 +1,166 @@
-
 """
 Streamlit web application for image classification.
 
 Run with: streamlit run app.py
 """
 
-import streamlit as st
-from PIL import Image, UnidentifiedImageError
-import os
-import tempfile
-import math
 from pathlib import Path
 from urllib.request import urlopen
+import math
 import shutil
-import numpy as np
+import tempfile
+import os
+
+import streamlit as st
+from PIL import Image, UnidentifiedImageError
+
+
 st.set_page_config(page_title="Classificador de Imagens", page_icon="🐱🐶", layout="wide")
-
-APP_BUILD_TAG = "build-no-cv2-2026-02-17-1"
-
-
-
-
-
 
 MAX_UPLOAD_SIZE_MB = 10
 MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024
+MAX_IMAGE_PIXELS = 20_000_000
+MODEL_FILENAME = "transfer_learning_final_20260216_162455.h5"
+MODEL_PATH = Path("models") / MODEL_FILENAME
 
-Image.MAX_IMAGE_PIXELS = 20_000_000
+
+def get_remote_model_url() -> str | None:
+    model_url = os.getenv("TRANSFER_MODEL_URL")
+    if model_url:
+        return model_url
+
+    try:
+        secret_url = st.secrets.get("TRANSFER_MODEL_URL")
+    except Exception:
+        secret_url = None
+
+    return secret_url
+
+
+def resolve_model_path() -> tuple[str | None, str | None]:
+    if MODEL_PATH.exists():
+        return str(MODEL_PATH), None
+
+    remote_url = get_remote_model_url()
+    if not remote_url:
+        return None, "Modelo local não encontrado e TRANSFER_MODEL_URL não está configurado."
+
+    MODEL_PATH.parent.mkdir(exist_ok=True)
+
+    try:
+        with urlopen(remote_url, timeout=8) as response:
+            with MODEL_PATH.open("wb") as output_file:
+                shutil.copyfileobj(response, output_file)
+    except Exception as exc:
+        return None, f"Falha ao baixar modelo remoto: {exc}"
+
+    if not MODEL_PATH.exists():
+        return None, "Download do modelo terminou sem criar arquivo local."
+
+    return str(MODEL_PATH), None
+
+
+@st.cache_resource
+def load_model(model_path: str, cache_key: float):
+    from src.predict import ImageClassifier
+
+    return ImageClassifier(model_path=model_path, class_names=["Gato", "Cachorro"])
+
+
+def save_validated_temp_image(uploaded_file) -> tuple[Path | None, str | None]:
+    uploaded_file.seek(0, 2)
+    file_size = uploaded_file.tell()
+    uploaded_file.seek(0)
+
+    if file_size > MAX_UPLOAD_SIZE_BYTES:
+        return None, f"Arquivo excede {MAX_UPLOAD_SIZE_MB} MB."
+
+    try:
+        with Image.open(uploaded_file) as image_obj:
+            width, height = image_obj.size
+            if width * height > MAX_IMAGE_PIXELS:
+                return None, f"Imagem muito grande ({width}x{height})."
+            image_rgb = image_obj.convert("RGB")
+    except UnidentifiedImageError:
+        return None, "Arquivo inválido: não é uma imagem reconhecida."
+    except Exception as exc:
+        return None, f"Falha ao abrir imagem: {exc}"
+
+    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+    image_rgb.save(tmp_path, format="JPEG")
+
+    return tmp_path, None
+
+
+def predict_with_cleanup(classifier, temp_path: Path) -> tuple[str | None, float | None, str | None]:
+    prediction_error = None
+    pred_class = None
+    confidence_value = None
+
+    try:
+        pred_class, confidence, _ = classifier.predict(str(temp_path), return_confidence=True)
+        try:
+            confidence_value = float(confidence)
+        except Exception:
+            confidence_value = 0.0
+
+        if not math.isfinite(confidence_value):
+            confidence_value = 0.0
+    except Exception as exc:
+        prediction_error = f"Falha na inferência: {exc}"
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
+
+    if prediction_error:
+        return None, None, prediction_error
+
+    return pred_class, confidence_value, None
+
 
 st.title("🐱🐶 Classificador de Imagens")
-st.caption(f"Build: {APP_BUILD_TAG}")
-st.write(
-    "Este app classifica imagens de pets com Transfer Learning (MobileNetV2) "
-    "e mostra a classe prevista (Gato ou Cachorro) com nível de confiança."
+st.write("Upload de múltiplas imagens com inferência de classe e confiança.")
+
+uploaded_files = st.file_uploader(
+    "Escolha uma ou mais imagens...",
+    type=["jpg", "jpeg", "png", "bmp"],
+    accept_multiple_files=True,
 )
-st.info("Envie uma imagem para visualizar a predição e as probabilidades por classe.")
 
-TRANSFER_MODEL_FILENAME = "transfer_learning_final_20260216_162455.h5"
-TRANSFER_MODEL_PATH = f"models/{TRANSFER_MODEL_FILENAME}"
-model_file_present = Path(TRANSFER_MODEL_PATH).exists()
+if not uploaded_files:
+    st.info("Envie imagens para iniciar a análise.")
+    st.stop()
 
-status_col1, status_col2, status_col3 = st.columns(3)
-with status_col1:
-    st.caption("Runtime")
-    st.success("OK")
-with status_col2:
-    st.caption("Modelo Local")
-    st.success("OK") if model_file_present else st.warning("Ausente")
-with status_col3:
-    st.caption("Download Remoto")
-    remote_url_available = bool(os.getenv("TRANSFER_MODEL_URL"))
-    if not remote_url_available:
-        try:
-            remote_url_available = bool(st.secrets.get("TRANSFER_MODEL_URL"))
-        except Exception:
-            remote_url_available = False
-    st.success("Configurado") if remote_url_available else st.warning("Não configurado")
+with st.spinner("Preparando modelo..."):
+    model_path, model_error = resolve_model_path()
 
-st.divider()
-
-# Sidebar
-
-
-with st.sidebar.expander("⚙️ Como funciona", expanded=False):
-    st.markdown("""
-    1. Você envia uma imagem (JPG, JPEG, PNG ou BMP).
-    2. A imagem é validada e normalizada para inferência.
-    3. O modelo **Transfer Learning (MobileNetV2)** processa a entrada.
-    4. O app retorna a classe predita (**Gato** ou **Cachorro**) e a confiança.
-    5. Um gráfico mostra as probabilidades das duas classes.
-    """)
-
-with st.sidebar.expander("🧠 Arquitetura e treino", expanded=False):
-    st.markdown("""
-    - Dataset com 2 classes: **Gato** e **Cachorro**.
-    - Estratégia de treino: **Data Augmentation** para robustez.
-    - Backbone: **MobileNetV2** pré-treinada (Transfer Learning).
-    - Camadas finais densas para classificação binária.
-    - Monitoramento de treino com callbacks (early stopping e ajuste de learning rate).
-    """)
-
-with st.sidebar.expander("📊 Resultados esperados", expanded=False):
-    st.markdown("""
-    - Acurácia típica em Transfer Learning: **~96% a 98%**.
-    - Métricas acompanhadas: **Accuracy, Precision, Recall e F1-score**.
-    - A qualidade da imagem impacta diretamente a confiança da predição.
-
-    **Dica prática:** use imagens nítidas, com boa iluminação e o pet em destaque.
-    """)
-
-with st.sidebar.expander("🔗 Links", expanded=False):
-    st.markdown("Conecte-se comigo 👇")
-    st.markdown("- [LinkedIn](https://www.linkedin.com/in/leandroandradeti/)")
-    st.markdown("- [GitHub](https://github.com/leandroandradeti)")
-
-
-def resolve_model_path(default_path, timestamped_pattern):
-    """Resolve model path, preferring fixed filename and falling back to latest timestamped file."""
-    default_model_path = Path(default_path)
-
-    if default_model_path.exists():
-        return str(default_model_path)
-
-    model_candidates = sorted(
-        default_model_path.parent.glob(timestamped_pattern),
-        key=lambda path: path.stat().st_mtime,
-        reverse=True
-    )
-
-    if model_candidates:
-        return str(model_candidates[0])
-
-    return None
-
-
-def ensure_model_from_url(target_path):
-    """Try downloading model from env/secrets URL when local model is unavailable."""
-    model_url = os.getenv("TRANSFER_MODEL_URL")
-    if not model_url:
-        try:
-            model_url = st.secrets.get("TRANSFER_MODEL_URL")
-        except Exception:
-            model_url = None
-
-    if not model_url:
-        return None
-
-    target = Path(target_path)
-    target.parent.mkdir(exist_ok=True)
-
-    try:
-        with urlopen(model_url, timeout=8) as response:
-            with target.open("wb") as output:
-                shutil.copyfileobj(response, output)
-        return str(target)
-    except Exception:
-        return None
-
-# Load model
-@st.cache_resource
-def load_model(model_path, cache_key=None):
-    """Load model from cache."""
-    try:
-        from src.predict import ImageClassifier
-        return ImageClassifier(
-            model_path=model_path,
-            class_names=['Gato', 'Cachorro']
-        )
-    except FileNotFoundError:
-        st.error("Arquivo de modelo não encontrado. Treine ou envie um modelo primeiro.")
-        return None
-    except Exception as e:
-        st.error(f"Falha ao carregar o modelo no backend: {e}")
-        return None
-
-
-# Model paths
-
-# Garante que a variável existe para evitar NameError
-uploaded_model_file = None
-
-# Sempre prioriza o modelo final mais recente e robusto
-
-resolved_model_path = None
-
-if uploaded_model_file is not None:
-    uploaded_model_file.seek(0, 2)
-    uploaded_model_size = uploaded_model_file.tell()
-    uploaded_model_file.seek(0)
-
-    if uploaded_model_size > 200 * 1024 * 1024:
-        st.error("O modelo enviado é muito grande. Tamanho máximo permitido: 200 MB.")
-        st.stop()
-
-    models_dir = Path("models")
-    models_dir.mkdir(exist_ok=True)
-    uploaded_model_path = models_dir / "uploaded_model.h5"
-    uploaded_model_path.write_bytes(uploaded_model_file.getbuffer())
-    resolved_model_path = str(uploaded_model_path)
-    st.sidebar.info("Modelo enviado carregado para esta sessão.")
-else:
-    # No startup, evita download remoto para não travar o carregamento da página no Cloud.
-    if Path(TRANSFER_MODEL_PATH).exists():
-        resolved_model_path = TRANSFER_MODEL_PATH
-    else:
-        resolved_model_path = TRANSFER_MODEL_PATH
-
-model_exists = resolved_model_path is not None and Path(resolved_model_path).exists()
-if model_exists:
-    st.sidebar.success("Modelo encontrado: Transfer Learning (MobileNetV2)")
-else:
-    st.sidebar.warning("Modelo padrão não encontrado. Envie um .h5 para analisar imagens.")
+if model_error:
+    st.error(model_error)
+    st.stop()
 
 try:
-    uploaded_files = st.file_uploader(
-        "Escolha uma ou mais imagens...",
-        type=["jpg", "jpeg", "png", "bmp"],
-        accept_multiple_files=True,
-    )
+    model_mtime = Path(model_path).stat().st_mtime
+    classifier = load_model(model_path, cache_key=model_mtime)
+except Exception as exc:
+    st.error(f"Falha ao inicializar classificador: {exc}")
+    st.stop()
 
-    uploaded_files = uploaded_files or []
+for index, uploaded_file in enumerate(uploaded_files, start=1):
+    st.subheader(f"Imagem {index}: {uploaded_file.name}")
 
-    if not uploaded_files:
-        st.info("Envie uma imagem para iniciar a análise.")
-    elif not model_exists:
-        if st.session_state.get("model_download_failed", False):
-            st.error("Modelo indisponível nesta sessão. Recarregue a página para tentar novamente.")
-        else:
-            with st.spinner("Modelo local não encontrado. Tentando baixar modelo remoto..."):
-                downloaded_path = ensure_model_from_url(TRANSFER_MODEL_PATH)
+    temp_path, validation_error = save_validated_temp_image(uploaded_file)
+    if validation_error:
+        st.error(validation_error)
+        st.divider()
+        continue
 
-            if downloaded_path is not None and Path(downloaded_path).exists():
-                resolved_model_path = downloaded_path
-                model_exists = True
-                st.session_state.model_download_failed = False
-                st.success("Modelo baixado com sucesso.")
-            else:
-                st.session_state.model_download_failed = True
-                st.error("Não foi possível obter o modelo (local/remoto). Verifique TRANSFER_MODEL_URL.")
+    pred_class, confidence_value, prediction_error = predict_with_cleanup(classifier, temp_path)
+    if prediction_error:
+        st.error(prediction_error)
+        st.divider()
+        continue
 
-    if uploaded_files and model_exists:
-        try:
-            model_mtime = Path(resolved_model_path).stat().st_mtime
-            classifier = load_model(resolved_model_path, cache_key=model_mtime)
-        except Exception as e:
-            classifier = None
-            st.error(f"Erro ao preparar o modelo: {e}")
-
-        if classifier is None:
-            st.error("Não foi possível inicializar o modelo para inferência.")
-            st.stop()
-
-        for index, uploaded_file in enumerate(uploaded_files, start=1):
-            try:
-                if uploaded_file is None:
-                    continue
-
-                uploaded_file.seek(0, 2)
-                uploaded_file_size = uploaded_file.tell()
-                uploaded_file.seek(0)
-
-                if uploaded_file_size > MAX_UPLOAD_SIZE_BYTES:
-                    st.error(
-                        f"Imagem {index} excede {MAX_UPLOAD_SIZE_MB} MB. "
-                        "Envie uma imagem menor para evitar travamentos no deploy."
-                    )
-                    continue
-
-                try:
-                    with Image.open(uploaded_file) as pil_image:
-                        width, height = pil_image.size
-                        if width * height > Image.MAX_IMAGE_PIXELS:
-                            st.error(
-                                f"Imagem {index} muito grande ({width}x{height}). "
-                                "Use uma imagem menor."
-                            )
-                            continue
-                        image = pil_image.convert("RGB")
-                except UnidentifiedImageError:
-                    st.error(f"Arquivo {index} não é uma imagem válida.")
-                    continue
-                except Exception:
-                    st.error("Imagem muito grande ou inválida.")
-                    continue
-
-                with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
-                    temp_path = Path(temp_file.name)
-                image.save(temp_path, format="JPEG")
-                try:
-                    pred_class, confidence, scores = classifier.predict(
-                        str(temp_path),
-                        return_confidence=True
-                    )
-                finally:
-                    if temp_path.exists():
-                        temp_path.unlink()
-
-                try:
-                    confidence_value = float(confidence)
-                except Exception:
-                    confidence_value = 0.0
-
-                if not math.isfinite(confidence_value):
-                    confidence_value = 0.0
-
-                scores_array = np.asarray(scores, dtype=float).flatten()
-                scores_array = np.nan_to_num(scores_array, nan=0.0, posinf=1.0, neginf=0.0)
-
-                if scores_array.size == 1:
-                    p1 = float(np.clip(scores_array[0], 0.0, 1.0))
-                    scores_array = np.array([1.0 - p1, p1], dtype=float)
-
-                st.subheader(f"Resultado da imagem {index}")
-                preview_col, panel_col = st.columns([1, 1.4], gap="large")
-
-                with preview_col:
-                    st.image(image, caption=f"Imagem {index}", use_container_width=True)
-
-                with panel_col:
-                    with st.container(border=True):
-                        st.markdown("### 📊 Painel de Indicadores")
-                        metric_col1, metric_col2 = st.columns(2)
-                        with metric_col1:
-                            st.metric("Classe Identificada", pred_class)
-                        with metric_col2:
-                            st.metric("Nível de Confiança", f"{confidence_value:.2%}")
-
-                        if confidence_value < 0.6:
-                            st.warning("Imagem não reconhecida como gato ou cachorro.")
-                        elif confidence_value >= 0.90:
-                            st.success("Alta confiança")
-                        elif confidence_value >= 0.70:
-                            st.info("Média confiança")
-                        else:
-                            st.warning("Baixa confiança")
-
-                        if scores_array.size >= 2:
-                            st.markdown("**Distribuição de Probabilidades**")
-                            cat_score = float(np.clip(scores_array[0], 0.0, 1.0))
-                            dog_score = float(np.clip(scores_array[1], 0.0, 1.0))
-                            st.write(f"Gato: {cat_score:.2%}")
-                            st.progress(cat_score)
-                            st.write(f"Cachorro: {dog_score:.2%}")
-                            st.progress(dog_score)
-
-                if index < len(uploaded_files):
-                    st.divider()
-            except Exception as e:
-                import traceback
-                st.error(f"Erro inesperado ao processar a imagem: {e}")
-                st.error(traceback.format_exc())
-except Exception as e:
-    st.error(f"Erro inesperado ao processar a imagem ou exibir resultados: {e}")
+    st.success(f"Classe: {pred_class}")
+    st.write(f"Confiança: {confidence_value:.2%}")
+    st.divider()
