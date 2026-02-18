@@ -234,145 +234,48 @@ if "image_uploader_key" not in st.session_state:
 
 
 try:
-    show_uploader = not st.session_state.get("hide_uploader", False)
-    uploaded_files = None
+    uploaded_files = st.file_uploader(
+        "Escolha uma ou mais imagens...",
+        type=["jpg", "jpeg", "png", "bmp"],
+        accept_multiple_files=True,
+    )
+    if uploaded_files:
+        st.session_state.last_uploaded_files = uploaded_files
 
-    # Garante que a key do uploader seja sempre única
-    if "image_uploader_key" not in st.session_state:
-        st.session_state.image_uploader_key = 0
-
-    # Sempre mostra o uploader se não houver arquivos enviados
-    if show_uploader or "last_uploaded_files" not in st.session_state:
-        uploader_key = f"image_uploader_{st.session_state.image_uploader_key}"
-        uploaded_files = st.file_uploader(
-            "Escolha uma ou mais imagens...",
-            type=["jpg", "jpeg", "png", "bmp"],
-            accept_multiple_files=True,
-            key=uploader_key
-        )
-        st.markdown(
-            """
-            <script>
-            window.addEventListener('DOMContentLoaded', function() {
-                const dz = document.querySelector('[data-testid=\"stFileUploaderDropzone\"]');
-                if (dz && !dz.querySelector('.custom-upload-msg')) {
-                    const msg = document.createElement('div');
-                    msg.className = 'custom-upload-msg';
-                    msg.innerText = 'Envie uma imagem para visualizar a predição e as probabilidades por classe.';
-                    dz.appendChild(msg);
-                }
-            });
-            </script>
-            """,
-            unsafe_allow_html=True
-        )
-        if uploaded_files:
-            st.session_state.hide_uploader = True
-            st.session_state.last_uploaded_files = uploaded_files
-            st.session_state.image_uploader_key += 1  # Incrementa para garantir key única
-            st.rerun()
-
-    if not show_uploader:
-        if st.button("Nova análise"):
-            st.session_state.hide_uploader = False
-            st.session_state.image_uploader_key += 1
-            # Remove last_uploaded_files para garantir uploader limpo
-            if "last_uploaded_files" in st.session_state:
-                del st.session_state.last_uploaded_files
-            st.rerun()
-
-    if not show_uploader and classifier is None:
+    if classifier is None:
         st.error("Nenhum modelo carregado. Envie um arquivo .h5 na barra lateral para continuar.")
-
-    if not show_uploader and classifier is not None:
+    else:
         uploaded_files = st.session_state.get("last_uploaded_files", [])
-        import traceback
-        try:
-            for index, uploaded_file in enumerate(uploaded_files, start=1):
+        for index, uploaded_file in enumerate(uploaded_files, start=1):
+            try:
+                uploaded_file.seek(0, 2)
+                uploaded_file_size = uploaded_file.tell()
+                uploaded_file.seek(0)
                 try:
-                    uploaded_file.seek(0, 2)
-                    uploaded_file_size = uploaded_file.tell()
-                    uploaded_file.seek(0)
                     image = Image.open(uploaded_file).convert("RGB")
-                    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
-                        temp_path = Path(temp_file.name)
-                    image.save(temp_path, format="JPEG")
-                    try:
-                        pred_class, confidence, scores = classifier.predict(
-                            str(temp_path),
-                            return_confidence=True
-                        )
-                    finally:
-                        if temp_path.exists():
-                            temp_path.unlink()
-                except Exception as e:
-                    st.error(f"Erro inesperado ao processar a imagem: {e}")
-                    st.error(traceback.format_exc())
+                except Exception:
+                    st.error("Imagem muito grande ou inválida.")
                     continue
-        except Exception as e:
-            st.error(f"Erro fatal ao processar imagens: {e}")
-            st.error(traceback.format_exc())
+                with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
+                    temp_path = Path(temp_file.name)
+                image.save(temp_path, format="JPEG")
+                try:
+                    pred_class, confidence, scores = classifier.predict(
+                        str(temp_path),
+                        return_confidence=True
+                    )
+                finally:
+                    if temp_path.exists():
+                        temp_path.unlink()
 
-            # Lógica de rejeição: se confiança < 0.6, exibe mensagem de rejeição
-            if confidence < 0.6:
-                st.markdown(f"""
-<div style='display: flex; flex-wrap: wrap; gap: 2.2rem; align-items: flex-start; margin: 1.5rem 0 2.2rem 0; background: #fffbe6; border-radius: 18px; box-shadow: 0 2px 12px #0001; padding: 1.3rem 1.3rem 1.3rem 1.3rem;'>
-    <div style='flex:1; min-width:220px; max-width:340px; display:flex; flex-direction:column; align-items:center;'>
-        <img src='data:image/png;base64,{image_to_base64(image)}' width='290' style='border-radius:12px; box-shadow:0 1px 8px #0001; margin-bottom:0.7rem;' />
-    </div>
-    <div style='flex:2; min-width:260px; max-width:480px; display:flex; align-items:center;'>
-        <div style="width:100%; text-align:center;">
-            <div style="font-size:1.5rem; color:#b26a00; font-weight:700; margin-bottom:0.7rem;">Imagem não reconhecida como gato ou cachorro.</div>
-            <div style="font-size:1.1rem; color:#b26a00;">Confiança: {confidence:.2%}</div>
-        </div>
-    </div>
-</div>
-""",
-unsafe_allow_html=True
-)
-            else:
-                if confidence >= 0.90:
-                    badge_text = "Alta confiança"
-                    badge_class = "confidence-high"
-                elif confidence >= 0.70:
-                    badge_text = "Média confiança"
-                    badge_class = "confidence-medium"
+                # Lógica de exibição de resultado
+                if confidence < 0.6:
+                    st.warning(f"Imagem não reconhecida. Confiança: {confidence:.2%}")
                 else:
-                    badge_text = "Baixa confiança"
-                    badge_class = "confidence-low"
-
-                st.markdown(f"""
-<div style='display: flex; flex-wrap: wrap; gap: 2.2rem; align-items: flex-start; margin: 1.5rem 0 2.2rem 0; background: #f8fafc; border-radius: 18px; box-shadow: 0 2px 12px #0001; padding: 1.3rem 1.3rem 1.3rem 1.3rem;'>
-    <div style='flex:1; min-width:220px; max-width:340px; display:flex; flex-direction:column; align-items:center;'>
-        <img src='data:image/png;base64,{image_to_base64(image)}' width='290' style='border-radius:12px; box-shadow:0 1px 8px #0001; margin-bottom:0.7rem;' />
-    </div>
-    <div style='flex:2; min-width:260px; max-width:480px;'>
-        <div class="kpi-card" style="padding-top:0.1rem; margin-top:0; box-shadow:none; background:transparent;">
-            <div class="kpi-card-title" style="margin-top:0; font-size:1.7rem;">&#128200; Painel de Indicadores</div>
-            <div style='display:flex; gap:1.2rem; margin-bottom:0.5rem; margin-top:0.7rem;'>
-                <div style='flex:1;'>
-                    <div style='font-size:1.25rem; color:#64748b; font-weight:600;'>Classe Identificada</div>
-                    <div style='font-size:1.7rem; color:#0f172a; font-weight:700; margin-bottom:0.2rem;'>{pred_class}</div>
-                </div>
-                <div style='flex:1;'>
-                    <div style='font-size:1.25rem; color:#64748b; font-weight:600;'>Nível de Confiança</div>
-                    <div style='font-size:1.7rem; color:#0f172a; font-weight:700; margin-bottom:0.2rem;'>{confidence:.2%}</div>
-                </div>
-            </div>
-            <span class="confidence-badge {badge_class}" style="margin-bottom:0.7rem; font-size:1.15rem;">{badge_text}</span>
-            <div class="kpi-section-title" style='margin-top:1.1rem; font-size:1.25rem;'>Distribuição de Probabilidades</div>
-            <div style='margin-bottom:0.7rem;'>
-                <div class="kpi-score-row" style="font-size:1.15rem;"><strong>{classifier.class_names[0]}</strong>: {scores[0]:.2%}</div>
-                <div class="kpi-score-row" style="font-size:1.15rem;"><strong>{classifier.class_names[1]}</strong>: {scores[1]:.2%}</div>
-            </div>
-        </div>
-    </div>
-</div>
-""",
-unsafe_allow_html=True
-)
-
-            if index < len(uploaded_files):
-                st.markdown('---')
+                    st.success(f"{pred_class} - Confiança: {confidence:.2%}")
+            except Exception as e:
+                import traceback
+                st.error(f"Erro inesperado ao processar a imagem: {e}")
+                st.error(traceback.format_exc())
 except Exception as e:
     st.error(f"Erro inesperado ao processar a imagem ou exibir resultados: {e}")
