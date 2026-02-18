@@ -81,6 +81,21 @@ class ImageClassifier:
         img_array = np.expand_dims(img_array, axis=0)
         
         return img_array, img
+
+    def preprocess_pil_image(self, pil_image):
+        """
+        Preprocess a PIL image for prediction.
+
+        Args:
+            pil_image: PIL Image instance
+
+        Returns:
+            Preprocessed image array
+        """
+        img = pil_image.convert('RGB').resize((self.img_size, self.img_size))
+        img_array = np.array(img) / 255.0
+        img_array = np.expand_dims(img_array, axis=0)
+        return img_array
     
     def predict(self, image_path, return_confidence=False):
         """
@@ -104,6 +119,28 @@ class ImageClassifier:
         if return_confidence:
             return predicted_class, confidence, predictions[0]
         
+        return predicted_class
+
+    def predict_pil_image(self, pil_image, return_confidence=False):
+        """
+        Make prediction directly from a PIL image.
+
+        Args:
+            pil_image: PIL Image instance
+            return_confidence: Whether to return confidence scores
+
+        Returns:
+            Predicted class name and optionally confidence
+        """
+        img_array = self.preprocess_pil_image(pil_image)
+        predictions = self.model.predict(img_array, verbose=0)
+        predicted_class_idx = np.argmax(predictions[0])
+        predicted_class = self.class_names[predicted_class_idx]
+        confidence = predictions[0][predicted_class_idx]
+
+        if return_confidence:
+            return predicted_class, confidence, predictions[0]
+
         return predicted_class
     
     def predict_batch(self, image_paths):

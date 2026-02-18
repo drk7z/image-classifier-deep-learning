@@ -8,7 +8,6 @@ from pathlib import Path
 from urllib.request import urlopen
 import math
 import shutil
-import tempfile
 import os
 import numpy as np
 
@@ -68,40 +67,36 @@ def load_model(model_path: str, cache_key: float):
     return ImageClassifier(model_path=model_path, class_names=["Gato", "Cachorro"])
 
 
-def save_validated_temp_image(uploaded_file) -> tuple[Path | None, Image.Image | None, str | None]:
+def load_validated_image(uploaded_file) -> tuple[Image.Image | None, str | None]:
     uploaded_file.seek(0, 2)
     file_size = uploaded_file.tell()
     uploaded_file.seek(0)
 
     if file_size > MAX_UPLOAD_SIZE_BYTES:
-        return None, None, f"Arquivo excede {MAX_UPLOAD_SIZE_MB} MB."
+        return None, f"Arquivo excede {MAX_UPLOAD_SIZE_MB} MB."
 
     try:
         with Image.open(uploaded_file) as image_obj:
             width, height = image_obj.size
             if width * height > MAX_IMAGE_PIXELS:
-                return None, None, f"Imagem muito grande ({width}x{height})."
+                return None, f"Imagem muito grande ({width}x{height})."
             image_rgb = image_obj.convert("RGB")
     except UnidentifiedImageError:
-        return None, None, "Arquivo inválido: não é uma imagem reconhecida."
+        return None, "Arquivo inválido: não é uma imagem reconhecida."
     except Exception as exc:
-        return None, None, f"Falha ao abrir imagem: {exc}"
+        return None, f"Falha ao abrir imagem: {exc}"
 
-    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
-        tmp_path = Path(tmp.name)
-    image_rgb.save(tmp_path, format="JPEG")
-
-    return tmp_path, image_rgb, None
+    return image_rgb, None
 
 
-def predict_with_cleanup(classifier, temp_path: Path) -> tuple[str | None, float | None, np.ndarray | None, str | None]:
+def predict_from_image(classifier, image_rgb: Image.Image) -> tuple[str | None, float | None, np.ndarray | None, str | None]:
     prediction_error = None
     pred_class = None
     confidence_value = None
     scores_array = None
 
     try:
-        pred_class, confidence, scores = classifier.predict(str(temp_path), return_confidence=True)
+        pred_class, confidence, scores = classifier.predict_pil_image(image_rgb, return_confidence=True)
         try:
             confidence_value = float(confidence)
         except Exception:
@@ -117,9 +112,6 @@ def predict_with_cleanup(classifier, temp_path: Path) -> tuple[str | None, float
             scores_array = np.array([1.0 - p1, p1], dtype=float)
     except Exception as exc:
         prediction_error = f"Falha na inferência: {exc}"
-    finally:
-        if temp_path.exists():
-            temp_path.unlink()
 
     if prediction_error:
         return None, None, None, prediction_error
@@ -166,14 +158,20 @@ with st.sidebar.expander("🔗 Links", expanded=False):
     st.markdown("- [LinkedIn](https://www.linkedin.com/in/leandroandradeti/)")
     st.markdown("- [GitHub](https://github.com/drk7z)")
 
-uploaded_files = st.file_uploader(
-    "Escolha uma ou mais imagens...",
-    type=["jpg", "jpeg", "png", "bmp"],
-    accept_multiple_files=True,
-)
+with st.form("inference_form"):
+    uploaded_files = st.file_uploader(
+        "Escolha uma ou mais imagens...",
+        type=["jpg", "jpeg", "png", "bmp"],
+        accept_multiple_files=True,
+    )
+    analyze_submitted = st.form_submit_button("Analisar imagens")
 
 if not uploaded_files:
     st.info("Envie imagens para iniciar a análise.")
+    st.stop()
+
+if not analyze_submitted:
+    st.info("Imagens carregadas. Clique em **Analisar imagens** para processar.")
     st.stop()
 
 with st.spinner("Preparando modelo..."):
@@ -193,13 +191,13 @@ except Exception as exc:
 for index, uploaded_file in enumerate(uploaded_files, start=1):
     st.subheader(f"Imagem {index}: {uploaded_file.name}")
 
-    temp_path, image_rgb, validation_error = save_validated_temp_image(uploaded_file)
+    image_rgb, validation_error = load_validated_image(uploaded_file)
     if validation_error:
         st.error(validation_error)
         st.divider()
         continue
 
-    pred_class, confidence_value, scores_array, prediction_error = predict_with_cleanup(classifier, temp_path)
+    pred_class, confidence_value, scores_array, prediction_error = predict_from_image(classifier, image_rgb)
     if prediction_error:
         st.error(prediction_error)
         st.divider()
