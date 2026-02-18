@@ -11,7 +11,6 @@ import os
 import tempfile
 from pathlib import Path
 from urllib.request import urlretrieve
-from src.predict import ImageClassifier
 
 
 
@@ -111,12 +110,16 @@ def ensure_model_from_url(target_path):
 def load_model(model_path, cache_key=None):
     """Load model from cache."""
     try:
+        from src.predict import ImageClassifier
         return ImageClassifier(
             model_path=model_path,
             class_names=['Gato', 'Cachorro']
         )
     except FileNotFoundError:
         st.error("Arquivo de modelo não encontrado. Treine ou envie um modelo primeiro.")
+        return None
+    except Exception as e:
+        st.error(f"Falha ao carregar o modelo no backend: {e}")
         return None
 
 
@@ -154,13 +157,9 @@ else:
         # Se não existir localmente, tenta baixar do URL
         resolved_model_path = ensure_model_from_url(TRANSFER_MODEL_PATH)
 
-classifier = None
-if resolved_model_path is not None and Path(resolved_model_path).exists():
-    model_mtime = Path(resolved_model_path).stat().st_mtime
-    classifier = load_model(resolved_model_path, cache_key=model_mtime)
-
-if classifier is not None:
-    st.sidebar.success("Modelo ativo: Transfer Learning (MobileNetV2)")
+model_exists = resolved_model_path is not None and Path(resolved_model_path).exists()
+if model_exists:
+    st.sidebar.success("Modelo encontrado: Transfer Learning (MobileNetV2)")
 else:
     st.sidebar.warning("Modelo padrão não encontrado. Envie um .h5 para analisar imagens.")
 
@@ -173,9 +172,22 @@ try:
 
     uploaded_files = uploaded_files or []
 
-    if classifier is None:
+    if not uploaded_files:
+        st.info("Envie uma imagem para iniciar a análise.")
+    elif not model_exists:
         st.error("Nenhum modelo carregado. Envie um arquivo .h5 na barra lateral para continuar.")
     else:
+        try:
+            model_mtime = Path(resolved_model_path).stat().st_mtime
+            classifier = load_model(resolved_model_path, cache_key=model_mtime)
+        except Exception as e:
+            classifier = None
+            st.error(f"Erro ao preparar o modelo: {e}")
+
+        if classifier is None:
+            st.error("Não foi possível inicializar o modelo para inferência.")
+            st.stop()
+
         for index, uploaded_file in enumerate(uploaded_files, start=1):
             try:
                 if uploaded_file is None:
