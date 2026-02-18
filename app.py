@@ -128,7 +128,43 @@ def predict_with_cleanup(classifier, temp_path: Path) -> tuple[str | None, float
 
 
 st.title("🐱🐶 Classificador de Imagens")
-st.write("Upload de múltiplas imagens com inferência de classe e confiança.")
+st.write(
+    "Este app classifica imagens de pets com Transfer Learning (MobileNetV2) "
+    "e mostra a classe prevista (Gato ou Cachorro) com nível de confiança."
+)
+st.info("Envie uma imagem para visualizar a predição e as probabilidades por classe.")
+
+with st.sidebar.expander("⚙️ Como funciona", expanded=False):
+    st.markdown("""
+    1. Você envia uma imagem (JPG, JPEG, PNG ou BMP).
+    2. A imagem é validada e normalizada para inferência.
+    3. O modelo **Transfer Learning (MobileNetV2)** processa a entrada.
+    4. O app retorna a classe predita (**Gato** ou **Cachorro**) e a confiança.
+    5. Um gráfico mostra as probabilidades das duas classes.
+    """)
+
+with st.sidebar.expander("🧠 Arquitetura e treino", expanded=False):
+    st.markdown("""
+    - Dataset com 2 classes: **Gato** e **Cachorro**.
+    - Estratégia de treino: **Data Augmentation** para robustez.
+    - Backbone: **MobileNetV2** pré-treinada (Transfer Learning).
+    - Camadas finais densas para classificação binária.
+    - Monitoramento de treino com callbacks (early stopping e ajuste de learning rate).
+    """)
+
+with st.sidebar.expander("📊 Resultados esperados", expanded=False):
+    st.markdown("""
+    - Acurácia típica em Transfer Learning: **~96% a 98%**.
+    - Métricas acompanhadas: **Accuracy, Precision, Recall e F1-score**.
+    - A qualidade da imagem impacta diretamente a confiança da predição.
+
+    **Dica prática:** use imagens nítidas, com boa iluminação e o pet em destaque.
+    """)
+
+with st.sidebar.expander("🔗 Links", expanded=False):
+    st.markdown("Conecte-se comigo 👇")
+    st.markdown("- [LinkedIn](https://www.linkedin.com/in/leandroandradeti/)")
+    st.markdown("- [GitHub](https://github.com/drk7z)")
 
 uploaded_files = st.file_uploader(
     "Escolha uma ou mais imagens...",
