@@ -10,6 +10,7 @@ import math
 import shutil
 import tempfile
 import os
+import numpy as np
 
 import streamlit as st
 from PIL import Image, UnidentifiedImageError
@@ -67,39 +68,40 @@ def load_model(model_path: str, cache_key: float):
     return ImageClassifier(model_path=model_path, class_names=["Gato", "Cachorro"])
 
 
-def save_validated_temp_image(uploaded_file) -> tuple[Path | None, str | None]:
+def save_validated_temp_image(uploaded_file) -> tuple[Path | None, Image.Image | None, str | None]:
     uploaded_file.seek(0, 2)
     file_size = uploaded_file.tell()
     uploaded_file.seek(0)
 
     if file_size > MAX_UPLOAD_SIZE_BYTES:
-        return None, f"Arquivo excede {MAX_UPLOAD_SIZE_MB} MB."
+        return None, None, f"Arquivo excede {MAX_UPLOAD_SIZE_MB} MB."
 
     try:
         with Image.open(uploaded_file) as image_obj:
             width, height = image_obj.size
             if width * height > MAX_IMAGE_PIXELS:
-                return None, f"Imagem muito grande ({width}x{height})."
+                return None, None, f"Imagem muito grande ({width}x{height})."
             image_rgb = image_obj.convert("RGB")
     except UnidentifiedImageError:
-        return None, "Arquivo inválido: não é uma imagem reconhecida."
+        return None, None, "Arquivo inválido: não é uma imagem reconhecida."
     except Exception as exc:
-        return None, f"Falha ao abrir imagem: {exc}"
+        return None, None, f"Falha ao abrir imagem: {exc}"
 
     with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
         tmp_path = Path(tmp.name)
     image_rgb.save(tmp_path, format="JPEG")
 
-    return tmp_path, None
+    return tmp_path, image_rgb, None
 
 
-def predict_with_cleanup(classifier, temp_path: Path) -> tuple[str | None, float | None, str | None]:
+def predict_with_cleanup(classifier, temp_path: Path) -> tuple[str | None, float | None, np.ndarray | None, str | None]:
     prediction_error = None
     pred_class = None
     confidence_value = None
+    scores_array = None
 
     try:
-        pred_class, confidence, _ = classifier.predict(str(temp_path), return_confidence=True)
+        pred_class, confidence, scores = classifier.predict(str(temp_path), return_confidence=True)
         try:
             confidence_value = float(confidence)
         except Exception:
@@ -107,6 +109,12 @@ def predict_with_cleanup(classifier, temp_path: Path) -> tuple[str | None, float
 
         if not math.isfinite(confidence_value):
             confidence_value = 0.0
+
+        scores_array = np.asarray(scores, dtype=float).flatten()
+        scores_array = np.nan_to_num(scores_array, nan=0.0, posinf=1.0, neginf=0.0)
+        if scores_array.size == 1:
+            p1 = float(np.clip(scores_array[0], 0.0, 1.0))
+            scores_array = np.array([1.0 - p1, p1], dtype=float)
     except Exception as exc:
         prediction_error = f"Falha na inferência: {exc}"
     finally:
@@ -114,9 +122,9 @@ def predict_with_cleanup(classifier, temp_path: Path) -> tuple[str | None, float
             temp_path.unlink()
 
     if prediction_error:
-        return None, None, prediction_error
+        return None, None, None, prediction_error
 
-    return pred_class, confidence_value, None
+    return pred_class, confidence_value, scores_array, None
 
 
 st.title("🐱🐶 Classificador de Imagens")
@@ -149,18 +157,33 @@ except Exception as exc:
 for index, uploaded_file in enumerate(uploaded_files, start=1):
     st.subheader(f"Imagem {index}: {uploaded_file.name}")
 
-    temp_path, validation_error = save_validated_temp_image(uploaded_file)
+    temp_path, image_rgb, validation_error = save_validated_temp_image(uploaded_file)
     if validation_error:
         st.error(validation_error)
         st.divider()
         continue
 
-    pred_class, confidence_value, prediction_error = predict_with_cleanup(classifier, temp_path)
+    pred_class, confidence_value, scores_array, prediction_error = predict_with_cleanup(classifier, temp_path)
     if prediction_error:
         st.error(prediction_error)
         st.divider()
         continue
 
-    st.success(f"Classe: {pred_class}")
-    st.write(f"Confiança: {confidence_value:.2%}")
+    preview_col, panel_col = st.columns([1, 1.4], gap="large")
+
+    with preview_col:
+        st.image(image_rgb, caption=f"Imagem {index}", use_container_width=True)
+
+    with panel_col:
+        st.success(f"Classe: {pred_class}")
+        st.write(f"Confiança: {confidence_value:.2%}")
+
+        if scores_array is not None and scores_array.size >= 2:
+            cat_score = float(np.clip(scores_array[0], 0.0, 1.0))
+            dog_score = float(np.clip(scores_array[1], 0.0, 1.0))
+            st.write(f"Gato: {cat_score:.2%}")
+            st.progress(cat_score)
+            st.write(f"Cachorro: {dog_score:.2%}")
+            st.progress(dog_score)
+
     st.divider()
