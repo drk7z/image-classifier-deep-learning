@@ -17,3 +17,11 @@ primaryColor = "#4f46e5"
 backgroundColor = "#f8fafc"
 secondaryBackgroundColor = "#ffffff"
 textColor = "#0f172a"
+
+[theme.sidebar]
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f8fafc"
+textColor = "#0f172a"
+widgetBackgroundColor = "#ffffff"
+widgetBorderColor = "#e2e8f0"
+skeletonBackgroundColor = "#e5e7eb"

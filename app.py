@@ -9,9 +9,11 @@ import streamlit as st
 from PIL import Image, UnidentifiedImageError
 import os
 import tempfile
+import math
 from pathlib import Path
 from urllib.request import urlopen
 import shutil
+import numpy as np
 st.set_page_config(page_title="Classificador de Imagens", page_icon="🐱🐶", layout="wide")
 
 
@@ -251,6 +253,21 @@ try:
                     if temp_path.exists():
                         temp_path.unlink()
 
+                try:
+                    confidence_value = float(confidence)
+                except Exception:
+                    confidence_value = 0.0
+
+                if not math.isfinite(confidence_value):
+                    confidence_value = 0.0
+
+                scores_array = np.asarray(scores, dtype=float).flatten()
+                scores_array = np.nan_to_num(scores_array, nan=0.0, posinf=1.0, neginf=0.0)
+
+                if scores_array.size == 1:
+                    p1 = float(np.clip(scores_array[0], 0.0, 1.0))
+                    scores_array = np.array([1.0 - p1, p1], dtype=float)
+
                 st.subheader(f"Resultado da imagem {index}")
                 preview_col, panel_col = st.columns([1, 1.4], gap="large")
 
@@ -264,23 +281,25 @@ try:
                         with metric_col1:
                             st.metric("Classe Identificada", pred_class)
                         with metric_col2:
-                            st.metric("Nível de Confiança", f"{confidence:.2%}")
+                            st.metric("Nível de Confiança", f"{confidence_value:.2%}")
 
-                        if confidence < 0.6:
+                        if confidence_value < 0.6:
                             st.warning("Imagem não reconhecida como gato ou cachorro.")
-                        elif confidence >= 0.90:
+                        elif confidence_value >= 0.90:
                             st.success("Alta confiança")
-                        elif confidence >= 0.70:
+                        elif confidence_value >= 0.70:
                             st.info("Média confiança")
                         else:
                             st.warning("Baixa confiança")
 
-                        if len(scores) >= 2:
+                        if scores_array.size >= 2:
                             st.markdown("**Distribuição de Probabilidades**")
-                            st.write(f"Gato: {scores[0]:.2%}")
-                            st.progress(float(scores[0]))
-                            st.write(f"Cachorro: {scores[1]:.2%}")
-                            st.progress(float(scores[1]))
+                            cat_score = float(np.clip(scores_array[0], 0.0, 1.0))
+                            dog_score = float(np.clip(scores_array[1], 0.0, 1.0))
+                            st.write(f"Gato: {cat_score:.2%}")
+                            st.progress(cat_score)
+                            st.write(f"Cachorro: {dog_score:.2%}")
+                            st.progress(dog_score)
 
                 if index < len(uploaded_files):
                     st.divider()

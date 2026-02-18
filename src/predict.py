@@ -16,7 +16,6 @@ os.environ.setdefault('TF_NUM_INTEROP_THREADS', '1')
 
 import tensorflow as tf
 from PIL import Image
-import matplotlib.pyplot as plt
 
 
 _TF_RUNTIME_CONFIGURED = False
@@ -139,6 +138,7 @@ class ImageClassifier:
             image_path: Path to image file
             save_path: Optional path to save figure
         """
+        import matplotlib.pyplot as plt
         img_array, img = self.preprocess_image(image_path)
         
         # Get prediction
