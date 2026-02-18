@@ -2,6 +2,10 @@
 
 ## ⚡ 5 Minutos para Começar
 
+### Demo imediata (sem setup local)
+
+- Streamlit: https://image-classifier-dl.streamlit.app/
+
 ### 1. Preparar Ambiente
 ```bash
 # Clone o repositório

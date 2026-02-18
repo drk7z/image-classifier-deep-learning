@@ -6,6 +6,8 @@ Data: 13 de Fevereiro de 2026
 Versão: 1.0.0
 Status: ✅ Concluído
 
+Demo Online: https://image-classifier-dl.streamlit.app/
+
 ---
 
 ## 📦 O que foi Criado

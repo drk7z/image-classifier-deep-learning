@@ -6,6 +6,10 @@
 
 Um projeto completo de classificação de imagens com TensorFlow/Keras, focado em **Transfer Learning (MobileNetV2)** para alta performance e inferência prática.
 
+## 🌐 Demo Online
+
+- Streamlit: https://image-classifier-dl.streamlit.app/
+
 ---
 
 ## 📋 Indice
@@ -358,7 +362,7 @@ Este projeto está licenciado sob a MIT License - veja o arquivo [LICENSE](LICEN
 
 **Leandro Vieira**
 - GitHub: [@drk7z](https://github.com/drk7z)
-- Email: seu.email@example.com
+- LinkedIn: [leandroandradeti](https://www.linkedin.com/in/leandroandradeti/)
 
 Desenvolvido com ❤️ para a comunidade de Deep Learning
 

@@ -3,6 +3,9 @@
 ## 🎯 Resumo do Projeto
 Este repositório apresenta um produto de IA ponta a ponta focado em **classificação de imagens** (Gato vs Cachorro) utilizando **Deep Learning** com uma abordagem orientada à produção.
 
+## 🌐 Demo Online
+- Streamlit: https://image-classifier-dl.streamlit.app/
+
 Não é apenas um notebook de treinamento de modelo — ele inclui:
 - Uma aplicação deployável em Streamlit
 - Manipulação segura de upload de arquivos
