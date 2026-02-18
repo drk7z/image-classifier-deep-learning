@@ -4,11 +4,43 @@ Prediction script for image classification.
 This module handles making predictions on new images.
 """
 
+import os
 from pathlib import Path
 import numpy as np
+
+# Runtime safety defaults for constrained environments (e.g., Streamlit Cloud)
+os.environ.setdefault('CUDA_VISIBLE_DEVICES', '-1')
+os.environ.setdefault('TF_CPP_MIN_LOG_LEVEL', '2')
+os.environ.setdefault('TF_NUM_INTRAOP_THREADS', '1')
+os.environ.setdefault('TF_NUM_INTEROP_THREADS', '1')
+
 import tensorflow as tf
 from PIL import Image
 import matplotlib.pyplot as plt
+
+
+_TF_RUNTIME_CONFIGURED = False
+
+
+def _configure_tensorflow_runtime():
+    global _TF_RUNTIME_CONFIGURED
+    if _TF_RUNTIME_CONFIGURED:
+        return
+
+    try:
+        try:
+            tf.config.set_visible_devices([], 'GPU')
+        except Exception:
+            pass
+
+        intra_threads = int(os.getenv('TF_NUM_INTRAOP_THREADS', '1'))
+        inter_threads = int(os.getenv('TF_NUM_INTEROP_THREADS', '1'))
+        tf.config.threading.set_intra_op_parallelism_threads(intra_threads)
+        tf.config.threading.set_inter_op_parallelism_threads(inter_threads)
+    except Exception:
+        pass
+    finally:
+        _TF_RUNTIME_CONFIGURED = True
 
 
 class ImageClassifier:
@@ -22,6 +54,7 @@ class ImageClassifier:
             model_path: Path to trained model
             class_names: List of class names
         """
+        _configure_tensorflow_runtime()
         self.model = tf.keras.models.load_model(model_path)
         self.class_names = class_names or ['cat', 'dog']
         self.img_size = 224

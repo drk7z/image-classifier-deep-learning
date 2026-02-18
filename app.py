@@ -27,6 +27,8 @@ st.write(
     "Este app classifica imagens de pets com Transfer Learning (MobileNetV2) "
     "e mostra a classe prevista (Gato ou Cachorro) com nível de confiança."
 )
+st.info("Envie uma imagem para visualizar a predição e as probabilidades por classe.")
+st.divider()
 
 # Sidebar
 
@@ -169,6 +171,8 @@ try:
         accept_multiple_files=True,
     )
 
+    uploaded_files = uploaded_files or []
+
     if classifier is None:
         st.error("Nenhum modelo carregado. Envie um arquivo .h5 na barra lateral para continuar.")
     else:
@@ -217,13 +221,39 @@ try:
                     if temp_path.exists():
                         temp_path.unlink()
 
-                # Lógica de exibição de resultado
-                if confidence < 0.6:
-                    st.warning(f"Imagem não reconhecida. Confiança: {confidence:.2%}")
-                else:
-                    st.success(f"{pred_class} - Confiança: {confidence:.2%}")
-                    if len(scores) >= 2:
-                        st.caption(f"Gato: {scores[0]:.2%} | Cachorro: {scores[1]:.2%}")
+                st.subheader(f"Resultado da imagem {index}")
+                preview_col, panel_col = st.columns([1, 1.4], gap="large")
+
+                with preview_col:
+                    st.image(image, caption=f"Imagem {index}", use_container_width=True)
+
+                with panel_col:
+                    with st.container(border=True):
+                        st.markdown("### 📊 Painel de Indicadores")
+                        metric_col1, metric_col2 = st.columns(2)
+                        with metric_col1:
+                            st.metric("Classe Identificada", pred_class)
+                        with metric_col2:
+                            st.metric("Nível de Confiança", f"{confidence:.2%}")
+
+                        if confidence < 0.6:
+                            st.warning("Imagem não reconhecida como gato ou cachorro.")
+                        elif confidence >= 0.90:
+                            st.success("Alta confiança")
+                        elif confidence >= 0.70:
+                            st.info("Média confiança")
+                        else:
+                            st.warning("Baixa confiança")
+
+                        if len(scores) >= 2:
+                            st.markdown("**Distribuição de Probabilidades**")
+                            st.write(f"Gato: {scores[0]:.2%}")
+                            st.progress(float(scores[0]))
+                            st.write(f"Cachorro: {scores[1]:.2%}")
+                            st.progress(float(scores[1]))
+
+                if index < len(uploaded_files):
+                    st.divider()
             except Exception as e:
                 import traceback
                 st.error(f"Erro inesperado ao processar a imagem: {e}")
