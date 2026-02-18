@@ -54,7 +54,7 @@ class ImageClassifier:
             class_names: List of class names
         """
         _configure_tensorflow_runtime()
-        self.model = tf.keras.models.load_model(model_path)
+        self.model = tf.keras.models.load_model(model_path, compile=False)
         self.class_names = class_names or ['cat', 'dog']
         self.img_size = 224
     

@@ -206,7 +206,7 @@ for index, uploaded_file in enumerate(uploaded_files, start=1):
     preview_col, panel_col = st.columns([1, 1.4], gap="large")
 
     with preview_col:
-        st.image(image_rgb, caption=f"Imagem {index}", use_container_width=True)
+        st.image(image_rgb, caption=f"Imagem {index}", width="stretch")
 
     with panel_col:
         st.success(f"Classe: {pred_class}")
