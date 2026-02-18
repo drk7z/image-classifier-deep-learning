@@ -32,6 +32,28 @@ st.write(
     "e mostra a classe prevista (Gato ou Cachorro) com nível de confiança."
 )
 st.info("Envie uma imagem para visualizar a predição e as probabilidades por classe.")
+
+TRANSFER_MODEL_FILENAME = "transfer_learning_final_20260216_162455.h5"
+TRANSFER_MODEL_PATH = f"models/{TRANSFER_MODEL_FILENAME}"
+model_file_present = Path(TRANSFER_MODEL_PATH).exists()
+
+status_col1, status_col2, status_col3 = st.columns(3)
+with status_col1:
+    st.caption("Runtime")
+    st.success("OK")
+with status_col2:
+    st.caption("Modelo Local")
+    st.success("OK") if model_file_present else st.warning("Ausente")
+with status_col3:
+    st.caption("Download Remoto")
+    remote_url_available = bool(os.getenv("TRANSFER_MODEL_URL"))
+    if not remote_url_available:
+        try:
+            remote_url_available = bool(st.secrets.get("TRANSFER_MODEL_URL"))
+        except Exception:
+            remote_url_available = False
+    st.success("Configurado") if remote_url_available else st.warning("Não configurado")
+
 st.divider()
 
 # Sidebar
@@ -136,8 +158,6 @@ def load_model(model_path, cache_key=None):
 uploaded_model_file = None
 
 # Sempre prioriza o modelo final mais recente e robusto
-TRANSFER_MODEL_FILENAME = "transfer_learning_final_20260216_162455.h5"
-TRANSFER_MODEL_PATH = f"models/{TRANSFER_MODEL_FILENAME}"
 
 resolved_model_path = None
 
