@@ -10,7 +10,10 @@ from PIL import Image, UnidentifiedImageError
 import os
 import tempfile
 from pathlib import Path
-from urllib.request import urlretrieve
+from urllib.request import urlopen
+import shutil
+st.set_page_config(page_title="Classificador de Imagens", page_icon="🐱🐶", layout="wide")
+
 
 
 
@@ -100,7 +103,9 @@ def ensure_model_from_url(target_path):
     target.parent.mkdir(exist_ok=True)
 
     try:
-        urlretrieve(model_url, str(target))
+        with urlopen(model_url, timeout=8) as response:
+            with target.open("wb") as output:
+                shutil.copyfileobj(response, output)
         return str(target)
     except Exception:
         return None
@@ -150,12 +155,11 @@ if uploaded_model_file is not None:
     resolved_model_path = str(uploaded_model_path)
     st.sidebar.info("Modelo enviado carregado para esta sessão.")
 else:
-    # Sempre tenta usar o modelo final mais recente
+    # No startup, evita download remoto para não travar o carregamento da página no Cloud.
     if Path(TRANSFER_MODEL_PATH).exists():
         resolved_model_path = TRANSFER_MODEL_PATH
     else:
-        # Se não existir localmente, tenta baixar do URL
-        resolved_model_path = ensure_model_from_url(TRANSFER_MODEL_PATH)
+        resolved_model_path = TRANSFER_MODEL_PATH
 
 model_exists = resolved_model_path is not None and Path(resolved_model_path).exists()
 if model_exists:
@@ -175,8 +179,22 @@ try:
     if not uploaded_files:
         st.info("Envie uma imagem para iniciar a análise.")
     elif not model_exists:
-        st.error("Nenhum modelo carregado. Envie um arquivo .h5 na barra lateral para continuar.")
-    else:
+        if st.session_state.get("model_download_failed", False):
+            st.error("Modelo indisponível nesta sessão. Recarregue a página para tentar novamente.")
+        else:
+            with st.spinner("Modelo local não encontrado. Tentando baixar modelo remoto..."):
+                downloaded_path = ensure_model_from_url(TRANSFER_MODEL_PATH)
+
+            if downloaded_path is not None and Path(downloaded_path).exists():
+                resolved_model_path = downloaded_path
+                model_exists = True
+                st.session_state.model_download_failed = False
+                st.success("Modelo baixado com sucesso.")
+            else:
+                st.session_state.model_download_failed = True
+                st.error("Não foi possível obter o modelo (local/remoto). Verifique TRANSFER_MODEL_URL.")
+
+    if uploaded_files and model_exists:
         try:
             model_mtime = Path(resolved_model_path).stat().st_mtime
             classifier = load_model(resolved_model_path, cache_key=model_mtime)
@@ -187,6 +205,7 @@ try:
         if classifier is None:
             st.error("Não foi possível inicializar o modelo para inferência.")
             st.stop()
+
         for index, uploaded_file in enumerate(uploaded_files, start=1):
             try:
                 if uploaded_file is None:
