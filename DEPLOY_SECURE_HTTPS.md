@@ -1,6 +1,6 @@
 # Deploy Seguro (Nginx + Auth + Rate Limit + HTTPS)
 
-Este template adiciona uma camada de produção na frente do Streamlit:
+Este template adiciona uma camada de produção na frente do Gradio:
 
 - Autenticação básica (`nginx auth_basic`)
 - Rate limiting por IP

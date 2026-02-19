@@ -1,21 +1,20 @@
-"""
-Streamlit web application for image classification.
+"""Gradio web application for image classification.
 
-Run with: streamlit run app.py
+Run with: python app.py
 """
 
+from functools import lru_cache
 from pathlib import Path
 from urllib.request import urlopen
 import math
-import shutil
 import os
-import numpy as np
+import shutil
+from typing import Any
 
-import streamlit as st
+import gradio as gr
+import numpy as np
 from PIL import Image, UnidentifiedImageError
 
-
-st.set_page_config(page_title="Classificador de Imagens", page_icon="🐱🐶", layout="wide")
 
 MAX_UPLOAD_SIZE_MB = 10
 MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024
@@ -25,16 +24,7 @@ MODEL_PATH = Path("models") / MODEL_FILENAME
 
 
 def get_remote_model_url() -> str | None:
-    model_url = os.getenv("TRANSFER_MODEL_URL")
-    if model_url:
-        return model_url
-
-    try:
-        secret_url = st.secrets.get("TRANSFER_MODEL_URL")
-    except Exception:
-        secret_url = None
-
-    return secret_url
+    return os.getenv("TRANSFER_MODEL_URL")
 
 
 def resolve_model_path() -> tuple[str | None, str | None]:
@@ -60,23 +50,32 @@ def resolve_model_path() -> tuple[str | None, str | None]:
     return str(MODEL_PATH), None
 
 
-@st.cache_resource
-def load_model(model_path: str, cache_key: float):
-    from src.predict import ImageClassifier
+@lru_cache(maxsize=1)
+def get_classifier() -> tuple[Any | None, str | None]:
+    model_path, model_error = resolve_model_path()
+    if model_error:
+        return None, model_error
 
-    return ImageClassifier(model_path=model_path, class_names=["Gato", "Cachorro"])
+    try:
+        from src.predict import ImageClassifier
+
+        classifier = ImageClassifier(model_path=model_path, class_names=["Gato", "Cachorro"])
+        return classifier, None
+    except Exception as exc:
+        return None, f"Falha ao inicializar classificador: {exc}"
 
 
-def load_validated_image(uploaded_file) -> tuple[Image.Image | None, str | None]:
-    uploaded_file.seek(0, 2)
-    file_size = uploaded_file.tell()
-    uploaded_file.seek(0)
+def load_validated_image(file_path: str) -> tuple[Image.Image | None, str | None]:
+    try:
+        file_size = Path(file_path).stat().st_size
+    except Exception as exc:
+        return None, f"Falha ao ler arquivo: {exc}"
 
     if file_size > MAX_UPLOAD_SIZE_BYTES:
         return None, f"Arquivo excede {MAX_UPLOAD_SIZE_MB} MB."
 
     try:
-        with Image.open(uploaded_file) as image_obj:
+        with Image.open(file_path) as image_obj:
             width, height = image_obj.size
             if width * height > MAX_IMAGE_PIXELS:
                 return None, f"Imagem muito grande ({width}x{height})."
@@ -89,7 +88,7 @@ def load_validated_image(uploaded_file) -> tuple[Image.Image | None, str | None]
     return image_rgb, None
 
 
-def predict_from_image(classifier, image_rgb: Image.Image) -> tuple[str | None, float | None, np.ndarray | None, str | None]:
+def predict_from_image(classifier: Any, image_rgb: Image.Image) -> tuple[str | None, float | None, np.ndarray | None, str | None]:
     prediction_error = None
     pred_class = None
     confidence_value = None
@@ -119,105 +118,90 @@ def predict_from_image(classifier, image_rgb: Image.Image) -> tuple[str | None, 
     return pred_class, confidence_value, scores_array, None
 
 
-st.title("🐱🐶 Classificador de Imagens")
-st.write(
-    "Este app classifica imagens de pets com Transfer Learning (MobileNetV2) "
-    "e mostra a classe prevista (Gato ou Cachorro) com nível de confiança."
-)
-st.info("Envie uma imagem para visualizar a predição e as probabilidades por classe.")
+def analyze_images(file_paths: list[str] | None):
+    if not file_paths:
+        return [], "Envie imagens para iniciar a análise."
 
-with st.sidebar.expander("⚙️ Como funciona", expanded=False):
-    st.markdown("""
-    1. Você envia uma imagem (JPG, JPEG, PNG ou BMP).
-    2. A imagem é validada e normalizada para inferência.
-    3. O modelo **Transfer Learning (MobileNetV2)** processa a entrada.
-    4. O app retorna a classe predita (**Gato** ou **Cachorro**) e a confiança.
-    5. Um gráfico mostra as probabilidades das duas classes.
-    """)
+    classifier, load_error = get_classifier()
+    if load_error:
+        return [], load_error
 
-with st.sidebar.expander("🧠 Arquitetura e treino", expanded=False):
-    st.markdown("""
-    - Dataset com 2 classes: **Gato** e **Cachorro**.
-    - Estratégia de treino: **Data Augmentation** para robustez.
-    - Backbone: **MobileNetV2** pré-treinada (Transfer Learning).
-    - Camadas finais densas para classificação binária.
-    - Monitoramento de treino com callbacks (early stopping e ajuste de learning rate).
-    """)
+    rows = []
+    for file_path in file_paths:
+        file_name = Path(file_path).name
+        image_rgb, validation_error = load_validated_image(file_path)
+        if validation_error:
+            rows.append([file_name, "-", "-", "-", "-", validation_error])
+            continue
 
-with st.sidebar.expander("📊 Resultados esperados", expanded=False):
-    st.markdown("""
-    - Acurácia típica em Transfer Learning: **~96% a 98%**.
-    - Métricas acompanhadas: **Accuracy, Precision, Recall e F1-score**.
-    - A qualidade da imagem impacta diretamente a confiança da predição.
+        pred_class, confidence_value, scores_array, prediction_error = predict_from_image(classifier, image_rgb)
+        if prediction_error:
+            rows.append([file_name, "-", "-", "-", "-", prediction_error])
+            continue
 
-    **Dica prática:** use imagens nítidas, com boa iluminação e o pet em destaque.
-    """)
-
-with st.sidebar.expander("🔗 Links", expanded=False):
-    st.markdown("Conecte-se comigo 👇")
-    st.markdown("- [LinkedIn](https://www.linkedin.com/in/leandroandradeti/)")
-    st.markdown("- [GitHub](https://github.com/drk7z)")
-
-with st.form("inference_form"):
-    uploaded_files = st.file_uploader(
-        "Escolha uma ou mais imagens...",
-        type=["jpg", "jpeg", "png", "bmp"],
-        accept_multiple_files=True,
-    )
-    analyze_submitted = st.form_submit_button("Analisar imagens")
-
-if not uploaded_files:
-    st.info("Envie imagens para iniciar a análise.")
-    st.stop()
-
-if not analyze_submitted:
-    st.info("Imagens carregadas. Clique em **Analisar imagens** para processar.")
-    st.stop()
-
-with st.spinner("Preparando modelo..."):
-    model_path, model_error = resolve_model_path()
-
-if model_error:
-    st.error(model_error)
-    st.stop()
-
-try:
-    model_mtime = Path(model_path).stat().st_mtime
-    classifier = load_model(model_path, cache_key=model_mtime)
-except Exception as exc:
-    st.error(f"Falha ao inicializar classificador: {exc}")
-    st.stop()
-
-for index, uploaded_file in enumerate(uploaded_files, start=1):
-    st.subheader(f"Imagem {index}: {uploaded_file.name}")
-
-    image_rgb, validation_error = load_validated_image(uploaded_file)
-    if validation_error:
-        st.error(validation_error)
-        st.divider()
-        continue
-
-    pred_class, confidence_value, scores_array, prediction_error = predict_from_image(classifier, image_rgb)
-    if prediction_error:
-        st.error(prediction_error)
-        st.divider()
-        continue
-
-    preview_col, panel_col = st.columns([1, 1.4], gap="large")
-
-    with preview_col:
-        st.image(image_rgb, caption=f"Imagem {index}", width="stretch")
-
-    with panel_col:
-        st.success(f"Classe: {pred_class}")
-        st.write(f"Confiança: {confidence_value:.2%}")
-
+        cat_score = dog_score = 0.0
         if scores_array is not None and scores_array.size >= 2:
             cat_score = float(np.clip(scores_array[0], 0.0, 1.0))
             dog_score = float(np.clip(scores_array[1], 0.0, 1.0))
-            st.write(f"Gato: {cat_score:.2%}")
-            st.progress(cat_score)
-            st.write(f"Cachorro: {dog_score:.2%}")
-            st.progress(dog_score)
 
-    st.divider()
+        rows.append(
+            [
+                file_name,
+                pred_class,
+                f"{(confidence_value or 0.0):.2%}",
+                f"{cat_score:.2%}",
+                f"{dog_score:.2%}",
+                "OK",
+            ]
+        )
+
+    return rows, f"Processamento concluído para {len(rows)} imagem(ns)."
+
+
+def build_app() -> gr.Blocks:
+    with gr.Blocks(title="Classificador de Imagens") as demo:
+        gr.Markdown(
+            """
+            # 🐱🐶 Classificador de Imagens
+            Classifica imagens de pets com Transfer Learning (MobileNetV2).
+            Envie uma ou mais imagens para obter classe prevista e confiança.
+            """
+        )
+
+        file_input = gr.Files(
+            label="Escolha uma ou mais imagens",
+            file_types=["image"],
+            file_count="multiple",
+            type="filepath",
+        )
+        analyze_button = gr.Button("Analisar imagens", variant="primary")
+        results = gr.Dataframe(
+            headers=["Arquivo", "Classe", "Confiança", "Gato", "Cachorro", "Status"],
+            datatype=["str", "str", "str", "str", "str", "str"],
+            row_count=5,
+            col_count=(6, "fixed"),
+            wrap=True,
+            label="Resultados",
+        )
+        status = gr.Textbox(label="Status", interactive=False)
+
+        analyze_button.click(fn=analyze_images, inputs=file_input, outputs=[results, status])
+
+        gr.Markdown(
+            """
+            ### 🔗 Links
+            - [LinkedIn](https://www.linkedin.com/in/leandroandradeti/)
+            - [GitHub](https://github.com/drk7z)
+            """
+        )
+
+    return demo
+
+
+demo = build_app()
+
+
+if __name__ == "__main__":
+    server_name = os.getenv("GRADIO_SERVER_NAME", "0.0.0.0")
+    server_port = int(os.getenv("PORT", os.getenv("GRADIO_SERVER_PORT", "7860")))
+    demo.launch(server_name=server_name, server_port=server_port, show_error=True)

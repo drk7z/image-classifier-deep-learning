@@ -8,7 +8,7 @@ Um projeto completo de classificação de imagens com TensorFlow/Keras, focado e
 
 ## 🌐 Demo Online
 
-- Streamlit: https://image-classifier-dl.streamlit.app/
+- Demo pública temporariamente indisponível. Rode localmente com Gradio.
 
 ---
 
@@ -30,7 +30,7 @@ Um projeto completo de classificação de imagens com TensorFlow/Keras, focado e
 - ✅ **Data Augmentation** - Técnicas de aumento de dados para robustez
 - ✅ **Métricas Completas** - Accuracy, Precision, Recall, Confusion Matrix, ROC-AUC
 - ✅ **Monitoramento** - Early Stopping, Learning Rate Reduction
-- ✅ **Interface Web** - Aplicação Streamlit para inferência
+- ✅ **Interface Web** - Aplicação Gradio para inferência
 - ✅ **Notebook Jupyter** - Tutorial completo passo a passo
 - ✅ **Modular** - Código reutilizável e bem organizado
 
@@ -67,6 +67,11 @@ source venv/bin/activate
 3. **Instale as dependências**
 ```bash
 pip install -r requirements.txt
+```
+
+**Atalho para Windows (recomendado):**
+```bat
+install-dependencies.bat
 ```
 
 ### Download do Dataset
@@ -120,7 +125,7 @@ image-classifier-deep-learning/
 │
 ├── 📂 logs/                # TensorBoard logs
 │
-├── app.py                   # Aplicação Streamlit
+├── app.py                   # Aplicação Gradio
 ├── requirements.txt         # Dependências Python
 └── README.md               # Este arquivo
 ```
@@ -198,13 +203,13 @@ print(f"Predição: {pred_class} ({confidence:.2%})")
 classifier.visualize_prediction('path/to/image.jpg', save_path='prediction.png')
 ```
 
-### 5. Interface Web (Streamlit)
+### 5. Interface Web (Gradio)
 
 ```bash
-streamlit run app.py
+python app.py
 ```
 
-Acesse em: `http://localhost:8501`
+Acesse em: `http://localhost:7860`
 
 Funcionalidades:
 - Upload de imagens
@@ -267,7 +272,7 @@ Dense(2, Softmax) → [cat, dog]
 - **Scikit-learn** - Métricas e avaliação
 
 ### Interface Web
-- **Streamlit** - App web interativa
+- **Gradio** - App web interativa
 
 ---
 

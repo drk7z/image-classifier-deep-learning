@@ -12,14 +12,14 @@ if exist ".venv\Scripts\python.exe" (
     exit /b 1
 )
 
-"%PYTHON_EXE%" -c "import streamlit" >nul 2>&1
+"%PYTHON_EXE%" -c "import gradio" >nul 2>&1
 if errorlevel 1 (
     echo Instalando dependencias do projeto...
     "%PYTHON_EXE%" -m pip install -r requirements.txt
     if errorlevel 1 exit /b 1
 )
 
-echo Iniciando app em http://localhost:8501
-"%PYTHON_EXE%" -m streamlit run app.py %*
+echo Iniciando app em http://localhost:7860
+"%PYTHON_EXE%" app.py %*
 
 endlocal

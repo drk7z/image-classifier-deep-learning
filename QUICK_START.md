@@ -4,13 +4,16 @@
 
 ### Demo imediata (sem setup local)
 
-- Streamlit: https://image-classifier-dl.streamlit.app/
+- Demo pública temporariamente indisponível. Rode localmente com Gradio.
 
 ### 1. Preparar Ambiente
 ```bash
 # Clone o repositório
 git clone https://github.com/drk7z/image-classifier-deep-learning.git
 cd image-classifier-deep-learning
+
+# Windows (atalho recomendado)
+install-dependencies.bat
 
 # Crie ambiente virtual
 python -m venv venv
@@ -46,7 +49,7 @@ python -c "from src.train import ImageClassifierTrainer; ImageClassifierTrainer(
 ### 4. Teste seu Modelo
 ```bash
 # Interface Web
-streamlit run app.py
+python app.py
 
 # Ou via Python
 python -c "

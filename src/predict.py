@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 import numpy as np
 
-# Runtime safety defaults for constrained environments (e.g., Streamlit Cloud)
+# Runtime safety defaults for constrained environments (e.g., lightweight app hosting)
 os.environ.setdefault('CUDA_VISIBLE_DEVICES', '-1')
 os.environ.setdefault('TF_CPP_MIN_LOG_LEVEL', '2')
 os.environ.setdefault('TF_NUM_INTRAOP_THREADS', '1')

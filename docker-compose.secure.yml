@@ -6,11 +6,10 @@ services:
     container_name: image-classifier-app
     restart: unless-stopped
     expose:
-      - "8501"
+      - "7860"
     environment:
-      STREAMLIT_SERVER_HEADLESS: "true"
-      STREAMLIT_SERVER_PORT: "8501"
-      STREAMLIT_SERVER_ADDRESS: "0.0.0.0"
+      GRADIO_SERVER_NAME: "0.0.0.0"
+      GRADIO_SERVER_PORT: "7860"
 
   nginx:
     image: nginx:1.27-alpine

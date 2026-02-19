@@ -45,7 +45,7 @@
 |-----------|--------|-----------|
 | **Jupyter Notebook** | ✅ | Tutorial completo 8 seções |
 | **Python Scripts** | ✅ | Modular e reutilizável |
-| **Streamlit Web App** | ✅ | Interface interativa |
+| **Gradio Web App** | ✅ | Interface interativa |
 | **CLI/Command Line** | ✅ | Via import direto |
 
 ### Model Utilities
@@ -108,7 +108,7 @@ Scikit-learn Metrics
 
 ### Web Interface
 ```
-Streamlit 1.28+
+Gradio 5.0+
 ```
 
 ### Jupyter & Development
@@ -286,7 +286,7 @@ report = evaluator.get_classification_report()
 ✅ **8 módulos Python** bem organizados  
 ✅ **~1,500 linhas** de Jupyter notebook tutorial  
 ✅ **5 arquivos** de documentação completa  
-✅ **1 aplicação web** Streamlit funcional  
+✅ **1 aplicação web** Gradio funcional  
 ✅ **Modelos** CNN + Transfer Learning  
 ✅ **Exemplos** de uso completos  
 

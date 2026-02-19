@@ -6,7 +6,7 @@ Data: 13 de Fevereiro de 2026
 Versão: 1.0.0
 Status: ✅ Concluído
 
-Demo Online: https://image-classifier-dl.streamlit.app/
+Demo Online: indisponível no momento (execute localmente com Gradio).
 
 ---
 
@@ -57,7 +57,7 @@ image-classifier-deep-learning/
 ### 3. Aplicação Web
 
 #### ✅ app.py (125 linhas)
-- Interface Streamlit completa
+- Interface Gradio completa
 - Upload de imagens
 - Predições em tempo real
 - Visualização de confiança
@@ -127,7 +127,7 @@ pillow>=9.5.0
 scikit-learn>=1.3.0
 jupyter>=1.0.0
 ipython>=8.0.0
-streamlit>=1.28.0
+gradio>=5.0.0
 ```
 
 #### ✅ README.md (500+ linhas)
@@ -194,7 +194,7 @@ streamlit>=1.28.0
 - ✅ Predição simples
 - ✅ Predição em lote
 - ✅ Visualização com confiança
-- ✅ Interface web Streamlit
+- ✅ Interface web Gradio
 
 ---
 
@@ -264,7 +264,7 @@ jupyter notebook notebooks/01_cats_vs_dogs_classifier.ipynb
 
 ### Web Interface
 ```bash
-streamlit run app.py
+python app.py
 ```
 
 ### Training Script

@@ -4,10 +4,10 @@
 Este repositório apresenta um produto de IA ponta a ponta focado em **classificação de imagens** (Gato vs Cachorro) utilizando **Deep Learning** com uma abordagem orientada à produção.
 
 ## 🌐 Demo Online
-- Streamlit: https://image-classifier-dl.streamlit.app/
+- Demo pública temporariamente indisponível. Rode localmente com Gradio.
 
 Não é apenas um notebook de treinamento de modelo — ele inclui:
-- Uma aplicação deployável em Streamlit
+- Uma aplicação deployável em Gradio
 - Manipulação segura de upload de arquivos
 - Pipeline de CI com auditoria de vulnerabilidades em dependências
 - Execução containerizada com Docker para ambientes consistentes
@@ -32,7 +32,7 @@ Utiliza **Transfer Learning (MobileNetV2)** para aproveitar features visuais pr�
 ## 🏗️ Stack Técnica
 - Python
 - TensorFlow / Keras
-- Streamlit
+- Gradio
 - NumPy / Pillow / Matplotlib
 - GitHub Actions (CI)
 - Docker
@@ -50,7 +50,7 @@ Utiliza **Transfer Learning (MobileNetV2)** para aproveitar features visuais pr�
 - `src/train.py`: pipeline de treinamento
 - `src/evaluate.py`: avaliação do modelo
 - `src/predict.py`: lógica de inferência
-- `app.py`: frontend em Streamlit
+- `app.py`: frontend em Gradio
 - `.github/workflows/ci.yml`: verificações de segurança e qualidade no CI
 - `Dockerfile`: containerização pronta para produção
 
@@ -58,7 +58,7 @@ Utiliza **Transfer Learning (MobileNetV2)** para aproveitar features visuais pr�
 1. Instale as dependências:
    - `pip install -r requirements.txt`
 2. Inicie a aplicação:
-   - `streamlit run app.py`
+   - `python app.py`
 3. Abra no navegador:
    - `http://localhost:8501`
 

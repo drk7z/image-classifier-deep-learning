@@ -1,6 +1,6 @@
-# Security & DevOps Baseline (Python/Streamlit)
+# Security & DevOps Baseline (Python/Gradio)
 
-Este projeto é **Python + Streamlit** (não Node.js). Este guia adapta seu kit para o stack atual.
+Este projeto é **Python + Gradio** (não Node.js). Este guia adapta seu kit para o stack atual.
 
 ## ✅ O que foi implementado
 
@@ -18,7 +18,7 @@ Este projeto é **Python + Streamlit** (não Node.js). Este guia adapta seu kit 
 - Containerização em `Dockerfile`:
   - Base `python:3.11-slim`
   - Processo rodando como usuário não-root
-  - Configuração segura para execução headless do Streamlit
+  - Configuração segura para execução headless do Gradio
 - `.dockerignore` para reduzir superfície e vazamento de artefatos.
 
 ## ⚠️ Gaps atuais (próximos passos)
