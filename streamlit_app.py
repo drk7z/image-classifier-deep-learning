@@ -221,4 +221,4 @@ for index, uploaded_file in enumerate(uploaded_files, start=1):
 			st.progress(dog_score)
 
 	st.divider()
-from app import *  # noqa: F401,F403
+
