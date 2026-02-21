@@ -209,8 +209,13 @@ for index, uploaded_file in enumerate(uploaded_files, start=1):
 		st.image(image_rgb, caption=f"Imagem {index}", width="stretch")
 
 	with panel_col:
-		st.success(f"Classe: {pred_class}")
-		st.write(f"Confiança: {confidence_value:.2%}")
+		# Se confiança < 75%, define como "Não é gato nem cachorro"
+		if confidence_value is not None and confidence_value < 0.75:
+			st.warning("Classe: Não é gato nem cachorro")
+			st.write(f"Confiança: {confidence_value:.2%}")
+		else:
+			st.success(f"Classe: {pred_class}")
+			st.write(f"Confiança: {confidence_value:.2%}")
 
 		if scores_array is not None and scores_array.size >= 2:
 			cat_score = float(np.clip(scores_array[0], 0.0, 1.0))
