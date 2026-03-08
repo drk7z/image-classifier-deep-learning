@@ -387,7 +387,3 @@ Se tiver dúvidas ou encontrar problemas:
 - Abra uma [Issue](https://github.com/drk7z/image-classifier-deep-learning/issues)
 - Verifique as [Discussões](https://github.com/drk7z/image-classifier-deep-learning/discussions)
 - Entre em contato via email
-
----
-
-**Feito com 🔥 pela comunidade de Deep Learning**
